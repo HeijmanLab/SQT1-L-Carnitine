@@ -20,7 +20,7 @@ Doi: X
 
 Follow the below mentioned steps to re-create te virtual environment with all the correct package versions for this project.
 
-:exclamation: **Before creating a virtual environment please make sure you fully installed myokit (v. 1.35.2) already. Please follow these steps carefully: http://myokit.org/install.** :exclamation:
+:exclamation: **Before creating a virtual environment please make sure you fully installed Python 3 and myokit (v. 1.35.2) already. Please follow these steps carefully: http://myokit.org/install.** :exclamation:
 
 
 ***1. Clone the repo:***
