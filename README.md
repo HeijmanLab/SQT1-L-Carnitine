@@ -2,7 +2,7 @@
 
 # In-silico modelling of SQT1 and the effects of L-Carnitine.
 
-This model is part of the Journal X (2023) paper: 'Beneficial APD/QT prolongation/normalization by carnitine in transgenic SQT1 rabbit models' by Ilona Bodi, Konstantin Michaelides, Lea Mettke, Tibor Hornyik, Stefan Meier, Saranda Nimani, Stefanie Perez-Feliz, Ibrahim el-Battrawy, Manfred Zehender, Michael Brunner, Jordi Heijman, Katja E. Odening.
+This model is part of the Journal X (2023) paper: 'Beneficial normalization of cardiac repolarization by carnitine in transgenic SQT1 rabbit models' by Ilona Bodi, Konstantin Michaelides, Lea Mettke, Tibor Hornyik, Stefan Meier, Saranda Nimani, Stefanie Perez-Feliz, Ibrahim el-Battrawy, Manfred Zehender, Michael Brunner, Jordi Heijman, Katja E. Odening.
 Doi: X
 
 :file_folder: The [MMT](https://github.com/HeijmanLab/SQT1-L-Carnitine/tree/main/MMT) folder contains the adapted O'Hara Rudy human ventricular cardiomyocyte model (ORd), wherein Loewe et al. (2014) I<sub>Kr</sub> SQT1 and WT formulations were implemented.
