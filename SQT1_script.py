@@ -33,8 +33,6 @@ x_wt = [0.029412, 15, 22.4, 14.1, 6.5, 0.0003, 14.1, -5, -3.3328, 5.1237, 1]
 Lcarn_sqt1 = [0.017787,-48.520307,14.325950,22.303676,6.877993,0.000241,14.842432,-5.368071,-3.843856,4.941128,2.061902]
 #%% Validation correct implementation model behaviour.
 
-# QUESTION JORDI: Does this even need to be in the script? I don't think our validation is relevant here. 
-
 # Load the Loewe et al. 2014 N588K Mutation in CRN and ORd.
 m1 = myokit.load_model('MMT/ORD_LOEWE_CL_adapt_flag.mmt')
 m2 = myokit.load_model('MMT/CRN_LOEWE.mmt')
@@ -136,7 +134,7 @@ pace.set_binding(None)
 v = m1.get('membrane.V')
 # Demote v from a state to an ordinary variable; no longer dynamic.
 v.demote()
-# right-hand side setting; value doesn' matter because it gets linked to pacing mechanism.
+# right-hand side setting; value doesn't' matter because it gets linked to pacing mechanism.
 v.set_rhs(0)
 # Bind v's value to the pacing mechanism.
 v.set_binding('pace')
