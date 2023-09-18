@@ -7,7 +7,7 @@ Doi: X
 
 :file_folder: The [MMT](https://github.com/HeijmanLab/SQT1-L-Carnitine/tree/main/MMT) folder contains the adapted O'Hara Rudy human ventricular cardiomyocyte model (ORd), wherein Loewe et al. (2014) I<sub>Kr</sub> SQT1 and WT formulations were implemented.
 
-:file_folder: The [Data](https://github.com/HeijmanLab/SQT1-L-Carnitine/tree/main/Data) folder contains all the experimental data needed for the simulations (generally obtained with MyoKit's graph data extractor). 
+:file_folder: The [Data](https://github.com/HeijmanLab/SQT1-L-Carnitine/tree/main/Data) folder contains all the experimental data needed for the simulations. 
 
 :file_folder: The [Figures](https://github.com/HeijmanLab/SQT1-L-Carnitine/tree/main/Figures) folder is a results folders where some of the figures will be stored. 
 
