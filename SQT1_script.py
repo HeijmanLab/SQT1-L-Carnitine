@@ -19,8 +19,7 @@ import multiprocessing
 
 # Set your working directory.
 work_dir = os.getcwd()
-work_dir = os.path.join(work_dir, 'Documents', 'GitHub', 'OdeningProject')
-os.chdir(work_dir)
+#os.chdir(work_dir)
 
 # Load the functions.
 from SQT1_functions import export_dict_to_csv, export_dict_to_csv_AP, export_df_to_csv, calculate_reentry_time
