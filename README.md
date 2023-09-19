@@ -20,12 +20,12 @@ Doi: X
 
 Follow the below mentioned steps to re-create te virtual environment with all the correct package versions for this project.
 
-:exclamation: **Before creating a virtual environment please make sure you fully installed Python 3 and myokit (v. 1.35.2) already. Please follow these steps carefully: http://myokit.org/install.** :exclamation:
+:exclamation: **Before creating a virtual environment please make sure you fully installed Python >3.9.5 (for Linux: -dev version) and myokit (v. 1.35.2) already. Please follow these steps carefully: http://myokit.org/install.** :exclamation:
 
 
 ***1. Clone the repo:***
 
-`git clone git@github.com:HeijmanLab/SQT1-L-Carnitine.git`
+`https://github.com/HeijmanLab/SQT1-L-Carnitine.git` or `git clone git@github.com:HeijmanLab/SQT1-L-Carnitine.git`
 
 ***2. Create virtual environment:***
 
@@ -37,7 +37,7 @@ This re-creates a virtual environment with all the correct packages that were us
 
 - Create the virtual environment:
 
-`python -m venv SQT1_env`
+`python3 -m venv SQT1_env`
 
 - Activate the environment:
 
