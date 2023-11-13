@@ -572,7 +572,7 @@ GKs = if(cell.mode == 1, 1.4 * base, base)
 IKs = iks_scalar *(GKs * KsCa * x1 * x2 * (V - nernst.EKs))
     desc: Slow delayed rectifier Potassium current
 # IKs is scaled according to the condtions. WT = 1, WT + L-carn = 0.75, MT = 1.35 (Gain-of-function), MT + L-carn = 0.88 (1.35 * 0.65)
-iks_scalar = 1.0s
+iks_scalar = 1.0
 
 
 #

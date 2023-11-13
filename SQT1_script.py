@@ -19,7 +19,11 @@ import multiprocessing
 
 # Set your working directory.
 work_dir = os.getcwd()
-#os.chdir(work_dir)
+work_dir = os.path.join(work_dir, 'Documents', 'GitHub', 'SQT1-L-Carnitine')
+os.chdir(work_dir)
+files = [f for f in os.listdir('.') if os.path.isfile(f)]
+for f in files:
+    print(f)
 
 # Load the functions.
 from SQT1_functions import export_dict_to_csv, export_dict_to_csv_AP, export_df_to_csv, calculate_reentry_time
@@ -545,9 +549,13 @@ export_df_to_csv(steps = tail_steps, data = tail_MTc_model_sel, filename = 'tail
 
 # Load the model.
 m1 = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
+m2 = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
+m3 = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
 
 # Set cell type.
-m1.set_value('cell.mode', 0)
+m1.set_value('cell.mode', 0) # Endo
+m2.set_value('cell.mode', 1) # Epi
+m3.set_value('cell.mode', 2) # Mid
 
 # Create an action potential protocol.
 pace = myokit.Protocol()
@@ -558,7 +566,7 @@ bcl = 1000
 # Create an event schedule.
 pace.schedule(1, 20, 0.5, bcl)
 
-def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
+def action_pot(m, p, x, bcl, prepace, cell, mt_flag = True, carn_flag = False):
     """
     Action potential effects
     
@@ -580,6 +588,7 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     
     prepace : int
         The number of pre-pace cycles to stabilize the model before starting the simulation.
+    
     
     mt_flag : bool, optional (default = True)
         Flag indicating whether the simulation should include a modification to the iKr current based on the 'mt' condition.
@@ -641,37 +650,100 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     
     return dict(data = data, apd = apd, duration = duration, ikr = ikr)
 
-# Generate action potentials.
-wt_ap = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-Lcarn_wt_ap = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-sqt_ap = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True)
-Lcarn_sqt_ap = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True)
+# Generate action potentials for each cell type
+wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False)
+Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False)
+sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True)
+Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True)
 
-# Plot the results.
-plt.figure()
-plt.subplot(1, 2, 1)
-plt.plot(wt_ap['data']['engine.time'], wt_ap['data']['membrane.V'], 'k', label = f"No L-carnitine, APD = {wt_ap['duration']} ms")
-plt.plot(Lcarn_wt_ap['data']['engine.time'], Lcarn_wt_ap['data']['membrane.V'], 'r', label = f"With L-carnitine, APD = {Lcarn_wt_ap['duration']} ms")
-plt.legend()
-plt.ylabel('Membrane potential [mV]')
-plt.xlabel('Time [ms]')
-plt.title('WT Loewe model')
-plt.xlim([0, 500])
+wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False)
+Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False)
+sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True)
+Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True)
 
-plt.subplot(1, 2, 2)
-plt.plot(sqt_ap['data']['engine.time'], sqt_ap['data']['membrane.V'], 'k', label = f"No L-carnitine, APD = {sqt_ap['duration']} ms")
-plt.plot(Lcarn_sqt_ap['data']['engine.time'], Lcarn_sqt_ap['data']['membrane.V'], 'r', label = f"With L-carnitine, APD = {Lcarn_sqt_ap['duration']} ms")
-plt.legend()
-plt.ylabel('Membrane potential [mV]')
-plt.xlabel('Time [ms]')
-plt.title('SQT1 Loewe model')
-plt.xlim([0, 500])  
+wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False)
+Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False)
+sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True)
+Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True)
+
+# Set up the figure with 3 rows and 2 columns
+fig, axs = plt.subplots(3, 2, figsize=(12, 18))
+
+# Plot the results for endo
+axs[0, 0].plot(wt_ap_endo['data']['engine.time'], wt_ap_endo['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {wt_ap_endo['duration']} ms")
+axs[0, 0].plot(Lcarn_wt_ap_endo['data']['engine.time'], Lcarn_wt_ap_endo['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_wt_ap_endo['duration']} ms")
+axs[0, 0].legend()
+axs[0, 0].set_ylabel('Membrane potential [mV]')
+axs[0, 0].set_xlabel('Time [ms]')
+axs[0, 0].set_title('WT Loewe model (Endo)')
+axs[0, 0].set_xlim([0, 500])
+
+axs[0, 1].plot(sqt_ap_endo['data']['engine.time'], sqt_ap_endo['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_endo['duration']} ms")
+axs[0, 1].plot(Lcarn_sqt_ap_endo['data']['engine.time'], Lcarn_sqt_ap_endo['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_sqt_ap_endo['duration']} ms")
+axs[0, 1].legend()
+axs[0, 1].set_ylabel('Membrane potential [mV]')
+axs[0, 1].set_xlabel('Time [ms]')
+axs[0, 1].set_title('SQT1 Loewe model (Endo)')
+axs[0, 1].set_xlim([0, 500])
+
+# Plot the results for epi
+axs[1, 0].plot(wt_ap_epi['data']['engine.time'], wt_ap_epi['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {wt_ap_epi['duration']} ms")
+axs[1, 0].plot(Lcarn_wt_ap_epi['data']['engine.time'], Lcarn_wt_ap_epi['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_wt_ap_epi['duration']} ms")
+axs[1, 0].legend()
+axs[1, 0].set_ylabel('Membrane potential [mV]')
+axs[1, 0].set_xlabel('Time [ms]')
+axs[1, 0].set_title('WT Loewe model (Epi)')
+axs[1, 0].set_xlim([0, 500])
+
+axs[1, 1].plot(sqt_ap_epi['data']['engine.time'], sqt_ap_epi['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_epi['duration']} ms")
+axs[1, 1].plot(Lcarn_sqt_ap_epi['data']['engine.time'], Lcarn_sqt_ap_epi['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_sqt_ap_epi['duration']} ms")
+axs[1, 1].legend()
+axs[1, 1].set_ylabel('Membrane potential [mV]')
+axs[1, 1].set_xlabel('Time [ms]')
+axs[1, 1].set_title('SQT1 Loewe model (Epi)')
+axs[1, 1].set_xlim([0, 500])
+
+# Plot the results for mid
+axs[2, 0].plot(wt_ap_mid['data']['engine.time'], wt_ap_mid['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {wt_ap_mid['duration']} ms")
+axs[2, 0].plot(Lcarn_wt_ap_mid['data']['engine.time'], Lcarn_wt_ap_mid['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_wt_ap_mid['duration']} ms")
+axs[2, 0].legend()
+axs[2, 0].set_ylabel('Membrane potential [mV]')
+axs[2, 0].set_xlabel('Time [ms]')
+axs[2, 0].set_title('WT Loewe model (Mid)')
+axs[2, 0].set_xlim([0, 500])
+
+axs[2, 1].plot(sqt_ap_mid['data']['engine.time'], sqt_ap_mid['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_mid['duration']} ms")
+axs[2, 1].plot(Lcarn_sqt_ap_mid['data']['engine.time'], Lcarn_sqt_ap_mid['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_sqt_ap_mid['duration']} ms")
+axs[2, 1].legend()
+axs[2, 1].set_ylabel('Membrane potential [mV]')
+axs[2, 1].set_xlabel('Time [ms]')
+axs[2, 1].set_title('SQT1 Loewe model (mMid)')
+axs[2, 1].set_xlim([0, 500])
+
+# Adjust layout for better spacing
+plt.tight_layout()
+
+# Show the plots
+plt.show()
 
 # Export to GraphPad.
-export_dict_to_csv_AP(wt_ap, base_filename = 'AP_WT')
-export_dict_to_csv_AP(Lcarn_wt_ap, base_filename = 'AP_WTCarn')
-export_dict_to_csv_AP(sqt_ap, base_filename = 'AP_MT')
-export_dict_to_csv_AP(Lcarn_sqt_ap, base_filename = 'AP_MTCarn')
+export_dict_to_csv_AP(wt_ap_endo, base_filename = 'AP_WT_endo')
+export_dict_to_csv_AP(Lcarn_wt_ap_endo, base_filename = 'AP_WTCarn_endo')
+export_dict_to_csv_AP(sqt_ap_endo, base_filename = 'AP_MT_endo')
+export_dict_to_csv_AP(Lcarn_sqt_ap_endo, base_filename = 'AP_MTCarn_endo')
+
+export_dict_to_csv_AP(wt_ap_epi, base_filename = 'AP_WT_epi')
+export_dict_to_csv_AP(Lcarn_wt_ap_epi, base_filename = 'AP_WTCarn_epi')
+export_dict_to_csv_AP(sqt_ap_epi, base_filename = 'AP_MT_epi')
+export_dict_to_csv_AP(Lcarn_sqt_ap_epi, base_filename = 'AP_MTCarn_epi')
+
+export_dict_to_csv_AP(wt_ap_mid, base_filename = 'AP_WT_mid')
+export_dict_to_csv_AP(Lcarn_wt_ap_mid, base_filename = 'AP_WTCarn_mid')
+export_dict_to_csv_AP(sqt_ap_mid, base_filename = 'AP_MT_mid')
+export_dict_to_csv_AP(Lcarn_sqt_ap_mid, base_filename = 'AP_MTCarn_mid')
+
+
+# Add the relative changes in APD. 
 #%% prepace function
 
 def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False):
