@@ -69,6 +69,7 @@ Ca.Ca_i =  2.56752008084000005e-01
 Ca.Ca_NSR =  1.04450004990522999e+02
 Ca.tropi =  2.21716898949530012e+01
 Ca.trops =  1.98647019498539983e+01
+IKr_MM.xr1         = 3.296e-5
 
 [Ca]
 dot(Ca_NSR) = dCa_JSR
@@ -292,7 +293,7 @@ xkin = aki / (aki + bki)
 #
 
 [IKr_MM]
-use membrane.V
+use cell.V
 
 # Set a flag to mimic MT behaviour. Note, in this script the flag has no function.
 # It only works for the script with 'flag' in its name.
@@ -312,25 +313,28 @@ p10 = 5.1237
 p11 = 1
 
 # Activation
-xr2 = 1/(1 + exp((membrane.V + p2)/p3))
+xr2 = 1/(1 + exp((cell.V + p2)/p3))
 
 # Inactivation
-xr1_inf = 1/(1 + exp((membrane.V + p4)/-p5))
+xr1_inf = 1/(1 + exp((cell.V + p4)/-p5))
 
 # Differential equation
 dot(xr1) = (xr1_inf - xr1)/t_xr1
 
 # Alpha rate with if-statement.
-a_xr1 = piecewise(abs(membrane.V + p7) < 1e-5, 0.0015, p6 * (membrane.V + p7)/(1 - exp((membrane.V + p7)/p8)))
+a_xr1 = piecewise(abs(cell.V + p7) < 1e-5, 0.0015, p6 * (cell.V + p7)/(1 - exp((cell.V + p7)/p8)))
 
 # Beta rate with if-statement.
-b_xr1 = piecewise(abs(membrane.V + p9) < 1e-5,  3.78361180000000004e-4, 7.3898e-5 * (membrane.V + p9)/ (exp((membrane.V + p9)/p10) - 1))
+b_xr1 = piecewise(abs(cell.V + p9) < 1e-5,  3.78361180000000004e-4, 7.3898e-5 * (cell.V + p9)/ (exp((cell.V + p9)/p10) - 1))
 
 # Tau 
 t_xr1 = 1/((a_xr1 + b_xr1)*p11)
 
 # Current
-IKr = p1 * xr1 * xr2 * (membrane.V - nernst.EK)
+IKr = IKr_scalar * (p1 * xr1 * xr2 * (cell.V - reversal_potentials.ek))
+
+# Scalar to match Mahajan default behaviour
+IKr_scalar = 1
 
 [IKr]
 gkr = 0.0125
@@ -579,7 +583,7 @@ prNaK = 0.01833
 
 [[protocol]]
 # Level  Start    Length   Period   Multiplier
-1.0      100.0    0.5      1000.0   0
+1.0      20.0    0.5      1000.0   0
 
 [[script]]
 import matplotlib.pyplot as pl

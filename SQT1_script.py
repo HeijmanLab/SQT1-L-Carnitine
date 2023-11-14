@@ -10,6 +10,7 @@ Script: SQT1 script
 
 # Load the packages 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import myokit
 import numpy as np
 import pandas as pd
@@ -26,7 +27,7 @@ for f in files:
     print(f)
 
 # Load the functions.
-from SQT1_functions import export_dict_to_csv, export_dict_to_csv_AP, export_df_to_csv, calculate_reentry_time
+from SQT1_functions import export_dict_to_csv, export_dict_to_csv_AP, export_df_to_csv, calculate_reentry_time, relative_apd
 
 # Load the initial SQT1 parameters from the model.
 x_default_sqt = [0.029412, -38.65, 19.46, 16.49, 6.76, 0.0003, 14.1, -5, -3.3328, 5.1237, 2]
@@ -566,7 +567,7 @@ bcl = 1000
 # Create an event schedule.
 pace.schedule(1, 20, 0.5, bcl)
 
-def action_pot(m, p, x, bcl, prepace, cell, mt_flag = True, carn_flag = False):
+def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     """
     Action potential effects
     
@@ -717,7 +718,7 @@ axs[2, 1].plot(Lcarn_sqt_ap_mid['data']['engine.time'], Lcarn_sqt_ap_mid['data']
 axs[2, 1].legend()
 axs[2, 1].set_ylabel('Membrane potential [mV]')
 axs[2, 1].set_xlabel('Time [ms]')
-axs[2, 1].set_title('SQT1 Loewe model (mMid)')
+axs[2, 1].set_title('SQT1 Loewe model (Mid)')
 axs[2, 1].set_xlim([0, 500])
 
 # Adjust layout for better spacing
@@ -742,8 +743,268 @@ export_dict_to_csv_AP(Lcarn_wt_ap_mid, base_filename = 'AP_WTCarn_mid')
 export_dict_to_csv_AP(sqt_ap_mid, base_filename = 'AP_MT_mid')
 export_dict_to_csv_AP(Lcarn_sqt_ap_mid, base_filename = 'AP_MTCarn_mid')
 
+# Obtain the relative changes in apd for each of the celltypes. 
+rel_apd_endo = relative_apd(wt = wt_ap_endo, mt = sqt_ap_endo, 
+                      carn_wt = Lcarn_wt_ap_endo, carn_mt = Lcarn_sqt_ap_endo)
 
-# Add the relative changes in APD. 
+rel_apd_epi = relative_apd(wt = wt_ap_epi, mt = sqt_ap_epi, 
+                      carn_wt = Lcarn_wt_ap_epi, carn_mt = Lcarn_sqt_ap_epi)
+
+rel_apd_mid = relative_apd(wt = wt_ap_mid, mt = sqt_ap_mid, 
+                      carn_wt = Lcarn_wt_ap_mid, carn_mt = Lcarn_sqt_ap_mid)
+
+# Relabel the x-axis.
+rel_apd_labels = ['WT + L-Carn / WT', 'SQT1 + L-Carn / SQT1',
+                  'SQT1 / WT', 'SQT1 + L-Carn / WT + L-Carn']
+
+# Visualize the relative difference in APD.
+fig, axes = plt.subplots(nrows = 3, ncols = 1, figsize = (8, 12))
+
+# Plot bar plots for endo.
+sns.barplot(x = rel_apd_endo.columns, y = rel_apd_endo.iloc[0], ax = axes[0], color = 'black')
+axes[0].set_title('Endo', fontweight = 'bold')
+axes[0].set_ylabel('Relative change in APD (%)')
+axes[0].set_xticklabels(rel_apd_labels)
+
+# Plot bar plots for epi.
+sns.barplot(x = rel_apd_epi.columns, y = rel_apd_epi.iloc[0], ax = axes[1], color = 'darkgrey')
+axes[1].set_title('Epi', fontweight = 'bold')
+axes[1].set_ylabel('Relative change in APD (%)')
+axes[1].set_xticklabels(rel_apd_labels)
+
+# Plot bar plots for mid.
+sns.barplot(x = rel_apd_mid.columns, y = rel_apd_mid.iloc[0], ax = axes[2], color = 'lightgrey')
+axes[2].set_title('Mid', fontweight = 'bold')
+axes[2].set_ylabel('Relative change in APD (%)')
+axes[2].set_xticklabels(rel_apd_labels)
+
+# Adjust layout.
+plt.tight_layout()
+
+# Show the plots.
+plt.show()
+#%% Rabbit ventricular model
+
+# Load the rabbit model
+mr = myokit.load_model('MMT/Mahajan-2008.mmt')
+
+# Create an action potential protocol.
+pr = myokit.Protocol()
+
+# Set the basic cycle length to 1 Hz.
+bcl = 1000
+
+# Create an event schedule.
+pr.schedule(1, 20, 0.5, bcl)
+
+# Create a simulation object.
+sim_r = myokit.Simulation(mr, pr)
+
+# Set CVODE solver tolerance.
+sim_r.set_tolerance(1e-8, 1e-8)
+
+# Set the IKr modeltype to use
+sim_r.set_constant('IKr.IKr_modeltype', 0)
+
+# Pre-pace the model
+sim_r.pre(bcl * 1000)
+
+# Run the simulation and calculate the APD90.
+vt_r = 0.9 * sim_r.state()[mr.get('cell.V').index()]
+data_r, apd_r = sim_r.run(bcl, log = ['Environment.time', 'cell.V', 'IKr.xikr'], apd_variable = 'cell.V', apd_threshold = vt_r)
+
+# Round the APD90.
+apd90_r = round(apd_r['duration'][0], 2)    
+
+# Reset the simulation and re-run for the Loewe et al. (2014) IKr MM formulation
+sim_l = myokit.Simulation(mr, pr)
+
+# Set CVODE solver tolerance.
+sim_l.set_tolerance(1e-8, 1e-8)
+
+# Set the IKr modeltype to use
+sim_l.set_constant('IKr.IKr_modeltype', 1)
+
+# If modeltype is 1, then scale IKr from Loewe to match the rabbit one.
+sim_l.set_constant('IKr_MM.IKr_scalar', 0.3)
+
+# Pre-pace the model
+sim_l.pre(bcl * 1000)
+
+# Run the simulation and calculate the APD90.
+vt_l = 0.9 * sim_l.state()[mr.get('cell.V').index()]
+data_l, apd_l = sim_l.run(bcl, log = ['Environment.time', 'cell.V', 'IKr.xikr'], apd_variable = 'cell.V', apd_threshold = vt_l)
+
+# Round the APD90.
+apd90_l = round(apd_l['duration'][0], 2)    
+
+# Visualize the results
+fig, axs = plt.subplots(2, 1, figsize=(12, 18))
+
+axs[0].plot(data_r['Environment.time'], data_r['cell.V'], 'k', label = f'Mahajan 2008, apd90 = {apd90_r} ms')
+axs[0].plot(data_l['Environment.time'], data_l['cell.V'], 'r', label = f'Loewe 2014, apd90 = {apd90_l} ms')
+axs[0].legend()
+axs[0].set_xlabel('Time (ms)')
+axs[0].set_ylabel('Membrane potential (mV)')
+
+axs[1].plot(data_r['Environment.time'], data_r['IKr.xikr'], 'k', label = f'Mahajan 2008, apd90 = {apd90_r} ms')
+axs[1].plot(data_l['Environment.time'], data_l['IKr.xikr'], 'r', label = f'Loewe 2014, apd90 = {apd90_l} ms')
+axs[1].legend()
+axs[1].set_xlabel('Time (ms)')
+axs[1].set_ylabel('Current density (pA/pF)')
+
+# Tidy up the plots
+plt.tight_layout()
+plt.show()
+
+#%% Rabbit model APs and effects of MT and L-Carn treatment
+
+# Simulate the effects of the MT and the L-Carnitine treatment in the rabbit model
+# with the Loewe et al. (2014) Markov Model.
+
+# Load the rabbit model
+mrl = myokit.load_model('MMT/Mahajan-2008.mmt')
+
+# Create an action potential protocol.
+prl = myokit.Protocol()
+
+# Create an event schedule.
+prl.schedule(1, 20, 0.5, bcl)
+
+def rabbit_loewe(mrl, prl, x, prepace):
+
+    # Create a simulation object.
+    sim_rl = myokit.Simulation(mrl, prl)
+    
+    # Set CVODE solver tolerance.
+    sim_rl.set_tolerance(1e-8, 1e-8)
+    
+    # Set the IKr modeltype to Loewe
+    sim_rl.set_constant('IKr.IKr_modeltype', 1)
+    
+    # Scale IKr formulation of Loewe down to 30%
+    sim_rl.set_constant('IKr_MM.IKr_scalar', 0.3)
+    
+    # Set the other model parameters to Loewe as well
+    for i in range(len(x)):
+        sim_rl.set_constant(f'IKr_MM.p{i+1}', x[i])
+    
+    # Pre-pace the model
+    sim_rl.pre(bcl * prepace)
+    
+    # Run the simulation and calculate the APD90.
+    vt_rl = 0.9 * sim_rl.state()[mrl.get('cell.V').index()]
+    data_rl, apd_rl = sim_rl.run(bcl, log = ['Environment.time', 'cell.V', 'IKr.xikr'], apd_variable = 'cell.V', apd_threshold = vt_rl)
+    
+    # Round the APD90.
+    apd90_rl = round(apd_rl['duration'][0], 2)    
+    
+    return dict(data = data_rl, apd = apd90_rl)
+
+RL_wt = rabbit_loewe(mrl = mrl, prl = prl, x = x_wt, prepace = 1000)
+RL_sqt1 = rabbit_loewe(mrl = mrl, prl = prl, x = x_default_sqt, prepace = 1000)
+RL_Lcarn_wt = rabbit_loewe(mrl = mrl, prl = prl, x = Lcarn_wt, prepace = 1000)
+RL_Lcarn_sqt1 = rabbit_loewe(mrl = mrl, prl = prl, x = Lcarn_sqt1, prepace = 1000)
+ 
+# Visualize the results
+fig, axs = plt.subplots(2, 1, figsize=(12, 18))
+
+axs[0, 0].plot(RL_wt['data']['Environment.time'], RL_wt['data']['cell.V'], 'k', label = f'WT, apd90 = {RL_wt["apd"]} ms')
+axs[0, 0].legend()
+axs[0, 0].set_xlabel('Time (ms)')
+axs[0, 0].set_ylabel('Membrane potential (mV)')
+
+axs[1, 0].plot(RL_sqt1['data']['Environment.time'], RL_sqt1['data']['cell.V'], 'r', label = f'SQT1, apd90 = {RL_sqt1["apd"]} ms')
+axs[1, 0].legend()
+axs[1, 0].set_xlabel('Time (ms)')
+axs[1, 0].set_ylabel('Current density (pA/pF)')
+
+axs[0, 1].plot(RL_Lcarn_wt['data']['Environment.time'], RL_Lcarn_wt['data']['cell.V'], 'k', ls = 'dotted', label = f'WT + L-Carn, apd90 = {RL_Lcarn_wt["apd"]} ms')
+axs[0, 1].legend()
+axs[0, 1].set_xlabel('Time (ms)')
+axs[0, 1].set_ylabel('Membrane potential (mV)')
+
+axs[1, 1].plot(RL_Lcarn_sqt1['data']['Environment.time'], RL_Lcarn_sqt1['data']['cell.V'], 'r', ls = 'dotted', label = f'SQT1 + L-Carn, apd90 = {RL_Lcarn_sqt1["apd"]} ms')
+axs[1, 1].legend()
+axs[1, 1].set_xlabel('Time (ms)')
+axs[1, 1].set_ylabel('Current density (pA/pF)')
+
+# Tidy up the plots
+plt.tight_layout()
+plt.show()
+
+# Visualize the results
+fig, axs = plt.subplots(2, 1, figsize=(12, 18))
+
+axs[0].plot(RL_wt['data']['Environment.time'], RL_wt['data']['cell.V'], 'k', label = f'WT, apd90 = {RL_wt["apd"]} ms')
+axs[0].plot(RL_Lcarn_wt['data']['Environment.time'], RL_Lcarn_wt['data']['cell.V'], 'r', ls = 'dotted', label = f'WT + L-Carn, apd90 = {RL_Lcarn_wt["apd"]} ms')
+axs[0].legend()
+axs[0].set_title('WT', fontweight = 'bold')
+axs[0].set_xlabel('Time (ms)')
+axs[0].set_ylabel('Membrane potential (mV)')
+axs[0].set_xlim([0, 500])
+
+axs[1].plot(RL_sqt1['data']['Environment.time'], RL_sqt1['data']['cell.V'], 'k', label = f'SQT1, apd90 = {RL_sqt1["apd"]} ms')
+axs[1].plot(RL_Lcarn_sqt1['data']['Environment.time'], RL_Lcarn_sqt1['data']['cell.V'], 'r', ls = 'dotted', label = f'SQT1 + L-Carn, apd90 = {RL_Lcarn_sqt1["apd"]} ms')
+axs[1].legend()
+axs[1].set_title('SQT1', fontweight = 'bold')
+axs[1].set_xlabel('Time (ms)')
+axs[1].set_ylabel('Membrane potential (mV)')
+axs[1].set_xlim([0, 500])
+
+# Tidy up the plots
+plt.tight_layout()
+plt.show()
+
+#%% IKr, IKs, Ik1 sensitivity analysis
+
+# Load the model.
+m = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
+
+# Create an action potential protocol.
+p = myokit.Protocol()
+
+# Define the bcl.
+bcl = 1000
+
+# Create an event schedule.
+p.schedule(1, 20, 0.5, bcl)
+
+def sens_analysis(m, p, x, prepace, MT = False, carn = False):
+    
+    # Create a simulation object.
+    
+
+def rabbit_loewe(mrl, prl, x, prepace):
+
+    # Create a simulation object.
+    sim_rl = myokit.Simulation(mrl, prl)
+    
+    # Set CVODE solver tolerance.
+    sim_rl.set_tolerance(1e-8, 1e-8)
+    
+    # Set the IKr modeltype to Loewe
+    sim_rl.set_constant('IKr.IKr_modeltype', 1)
+    
+    # Scale IKr formulation of Loewe down to 30%
+    sim_rl.set_constant('IKr_MM.IKr_scalar', 0.3)
+    
+    # Set the other model parameters to Loewe as well
+    for i in range(len(x)):
+        sim_rl.set_constant(f'IKr_MM.p{i+1}', x[i])
+    
+    # Pre-pace the model
+    sim_rl.pre(bcl * prepace)
+    
+    # Run the simulation and calculate the APD90.
+    vt_rl = 0.9 * sim_rl.state()[mrl.get('cell.V').index()]
+    data_rl, apd_rl = sim_rl.run(bcl, log = ['Environment.time', 'cell.V', 'IKr.xikr'], apd_variable = 'cell.V', apd_threshold = vt_rl)
+    
+    # Round the APD90.
+    apd90_rl = round(apd_rl['duration'][0], 2)    
+    
+    return dict(data = data_rl, apd = apd90_rl)
+
 #%% prepace function
 
 def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False):

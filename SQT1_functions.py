@@ -163,3 +163,38 @@ def calculate_reentry_time(i, vm, dur_sim, dur, s2, interval, cutoff):
     print(f'The reentry time was {reentry_time_val} ms')
     
     return reentry_time_val
+
+def relative_apd(wt, mt, carn_wt, carn_mt):
+    '''
+    This function can be used to calculate the relative difference in APD
+    for the different conditions.
+
+    Parameters
+    ----------
+    wt : Dictionary
+        WT output from 'action_potential' function
+        
+    mt : Dictionary
+        MT output from 'action_potential' function
+        
+    carn_wt : Dictionary
+        WT with L-Carnitine output from 'action_potential' function
+        
+    carn_mt : Dictionary
+        MT with L-Carnitine output from 'action_potential' function
+
+    Returns
+    -------
+    Dataframe with the relative changes in APD for the conditions. 
+
+    '''
+    
+    rel_apd_wt = np.round((carn_wt['duration']/wt['duration'] * 100), 2)
+    rel_apd_mt = np.round((carn_mt['duration']/mt['duration'] * 100), 2)
+    rel_apd_NoCarn = np.round((mt['duration']/wt['duration'] * 100), 2)
+    rel_apd_Carn = np.round((carn_mt['duration']/carn_wt['duration'] * 100), 2)
+    
+    rel_apd = [rel_apd_wt, rel_apd_mt, rel_apd_NoCarn, rel_apd_Carn]
+    df = pd.DataFrame([rel_apd], columns = ['wt', 'mt', 'nocarn', 'carn'])
+    
+    return df
