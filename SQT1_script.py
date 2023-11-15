@@ -957,6 +957,8 @@ plt.tight_layout()
 plt.show()
 
 #%% IKr, IKs, Ik1 sensitivity analysis
+#ik1 wt = 0.81
+#ik1 sqt1 = 0.87
 
 # Load the model.
 m = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
@@ -970,40 +972,150 @@ bcl = 1000
 # Create an event schedule.
 p.schedule(1, 20, 0.5, bcl)
 
-def sens_analysis(m, p, x, prepace, MT = False, carn = False):
+def sens_analysis(m, p, x, bcl, prepace, ik1 = True, iks = True, MT = False, carn = False):
     
     # Create a simulation object.
-    
-
-def rabbit_loewe(mrl, prl, x, prepace):
-
-    # Create a simulation object.
-    sim_rl = myokit.Simulation(mrl, prl)
+    sim = myokit.Simulation(m, p)
     
     # Set CVODE solver tolerance.
-    sim_rl.set_tolerance(1e-8, 1e-8)
+    sim.set_tolerance(1e-8, 1e-8)
     
-    # Set the IKr modeltype to Loewe
-    sim_rl.set_constant('IKr.IKr_modeltype', 1)
-    
-    # Scale IKr formulation of Loewe down to 30%
-    sim_rl.set_constant('IKr_MM.IKr_scalar', 0.3)
-    
-    # Set the other model parameters to Loewe as well
+    # Set the parameters for IKr
     for i in range(len(x)):
-        sim_rl.set_constant(f'IKr_MM.p{i+1}', x[i])
+        sim.set_constant(f'ikr.p{i+1}', x[i])
     
-    # Pre-pace the model
-    sim_rl.pre(bcl * prepace)
+    # Scale IKs according to conditions
+    if iks:
+        if MT and carn:
+            sim.set_constant('iks.iks_scalar', 0.88)
+        elif MT and not carn:
+            sim.set_constant('iks.iks_scalar', 1.35)
+        elif not MT and carn:
+            sim.set_constant('iks.iks_scalar', 0.75)
+
+    # Scale IK1 according to conditions
+    if ik1:
+        if MT and carn:
+            sim.set_constant('ik1.ik1_scalar', 0.87)
+        elif not MT and carn:
+            sim.set_constant('iks.iks_scalar', 0.81)
+    
+    # Pre-pace the simulation
+    sim.pre(bcl * prepace)
     
     # Run the simulation and calculate the APD90.
-    vt_rl = 0.9 * sim_rl.state()[mrl.get('cell.V').index()]
-    data_rl, apd_rl = sim_rl.run(bcl, log = ['Environment.time', 'cell.V', 'IKr.xikr'], apd_variable = 'cell.V', apd_threshold = vt_rl)
+    vt = 0.9 * sim.state()[m.get('membrane.V').index()]
+    data, apd = sim.run(bcl, log = ['engine.time', 'membrane.V', 'ikr.IKr', 'iks.IKs', 'ik1.IK1'],
+                        apd_variable = 'membrane.V', apd_threshold = vt)
     
     # Round the APD90.
-    apd90_rl = round(apd_rl['duration'][0], 2)    
+    apd90 = round(apd['duration'][0], 2)    
     
-    return dict(data = data_rl, apd = apd90_rl)
+    return dict(data = data, apd = apd90)
+
+# WT simulations
+wt_sens = sens_analysis(m = m, p = p, x = x_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = True, MT = False, carn = False) 
+
+wt_noik1 = sens_analysis(m = m, p = p, x = x_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = True, MT = False, carn = False) 
+
+wt_noiks = sens_analysis(m = m, p = p, x = x_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = False, MT = False, carn = False) 
+
+wt_ikr = sens_analysis(m = m, p = p, x = x_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = False, MT = False, carn = False) 
+
+# WT simulations with L-Carnitine 
+wt_carn_sens = sens_analysis(m = m, p = p, x = Lcarn_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = True, MT = False, carn = True)  
+
+wt_carn_noik1 = sens_analysis(m = m, p = p, x = Lcarn_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = True, MT = False, carn = True) 
+
+wt_carn_noiks = sens_analysis(m = m, p = p, x = Lcarn_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = False, MT = False, carn = True) 
+
+wt_carn_ikr = sens_analysis(m = m, p = p, x = Lcarn_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = False, MT = False, carn = True) 
+
+# SQT1 simulations
+sqt1_sens = sens_analysis(m = m, p = p, x = x_default_sqt, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = True, MT = True, carn = False) 
+
+sqt1_noik1 = sens_analysis(m = m, p = p, x = x_default_sqt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = True, MT = True, carn = False)  
+
+sqt1_noiks = sens_analysis(m = m, p = p, x = x_default_sqt, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = False, MT = True, carn = False)  
+
+sqt1_ikr = sens_analysis(m = m, p = p, x = x_default_sqt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = False, MT = True, carn = False)   
+
+# SQT1 simulations with L-Carnitine
+sqt1_carn_sens = sens_analysis(m = m, p = p, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = True, MT = True, carn = True)
+
+sqt1_carn_noik1 = sens_analysis(m = m, p = p, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = True, MT = True, carn = True)  
+
+sqt1_carn_noiks = sens_analysis(m = m, p = p, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, 
+                     ik1 = True, iks = False, MT = True, carn = True) 
+
+sqt1_carn_ikr = sens_analysis(m = m, p = p, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = False, MT = True, carn = True) 
+
+
+plt.figure()
+plt.plot(wt_sens['data']['engine.time'], wt_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {wt_sens["apd"]} ms')   
+plt.plot(wt_noik1['data']['engine.time'], wt_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {wt_noik1["apd"]} ms')
+plt.plot(wt_noiks['data']['engine.time'], wt_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {wt_noiks["apd"]} ms')   
+plt.plot(wt_ikr['data']['engine.time'], wt_ikr['data']['membrane.V'], 'purple', label = f'Only IKr, apd90 = {wt_ikr["apd"]} ms')   
+plt.legend()    
+
+# Visualize the results
+fig, axs = plt.subplots(2, 2, figsize=(12, 18))
+
+axs[0, 0].plot(wt_sens['data']['engine.time'], wt_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {wt_sens["apd"]} ms')   
+axs[0, 0].plot(wt_noik1['data']['engine.time'], wt_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {wt_noik1["apd"]} ms')
+axs[0, 0].plot(wt_noiks['data']['engine.time'], wt_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {wt_noiks["apd"]} ms')   
+axs[0, 0].plot(wt_ikr['data']['engine.time'], wt_ikr['data']['membrane.V'], 'purple', label = f'Only IKr, apd90 = {wt_ikr["apd"]} ms')   
+axs[0, 0].legend()
+axs[0, 0].set_title('WT', fontweight = 'bold')
+axs[0, 0].set_xlim([0, 500])
+axs[0, 0].set_xlabel('Time (ms)')
+axs[0, 0].set_ylabel('Membrane potential (mV)')
+
+axs[1, 0].plot(wt_carn_sens['data']['engine.time'], wt_carn_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {wt_carn_sens["apd"]} ms')   
+axs[1, 0].plot(wt_carn_noik1['data']['engine.time'], wt_carn_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {wt_carn_noik1["apd"]} ms')
+axs[1, 0].plot(wt_carn_noiks['data']['engine.time'], wt_carn_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {wt_carn_noiks["apd"]} ms')   
+axs[1, 0].plot(wt_carn_ikr['data']['engine.time'], wt_carn_ikr['data']['membrane.V'], 'purple', label = f'Only IKr, apd90 = {wt_carn_ikr["apd"]} ms')   
+axs[1, 0].legend()
+axs[1, 0].set_title('WT + L-Carn', fontweight = 'bold')
+axs[1, 0].set_xlim([0, 500])
+axs[1, 0].set_xlabel('Time (ms)')
+axs[1, 0].set_ylabel('Membrane potential (mV)')
+
+axs[0, 1].plot(sqt1_sens['data']['engine.time'], sqt1_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {sqt1_sens["apd"]} ms')   
+axs[0, 1].plot(sqt1_noik1['data']['engine.time'], sqt1_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {sqt1_noik1["apd"]} ms')
+axs[0, 1].plot(sqt1_noiks['data']['engine.time'], sqt1_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {sqt1_noiks["apd"]} ms')   
+axs[0, 1].plot(sqt1_ikr['data']['engine.time'], sqt1_ikr['data']['membrane.V'], 'purple', label = f'Only IKr, apd90 = {sqt1_ikr["apd"]} ms')   
+axs[0, 1].legend()
+axs[0, 1].set_title('SQT1', fontweight = 'bold')
+axs[0, 1].set_xlim([0, 500])
+axs[0, 1].set_xlabel('Time (ms)')
+axs[0, 1].set_ylabel('Membrane potential (mV)')
+
+axs[1, 1].plot(sqt1_carn_sens['data']['engine.time'], sqt1_carn_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {sqt1_carn_sens["apd"]} ms')   
+axs[1, 1].plot(sqt1_carn_noik1['data']['engine.time'], sqt1_carn_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {sqt1_carn_noik1["apd"]} ms')
+axs[1, 1].plot(sqt1_carn_noiks['data']['engine.time'], sqt1_carn_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {sqt1_carn_noiks["apd"]} ms')   
+axs[1, 1].plot(sqt1_carn_ikr['data']['engine.time'], sqt1_carn_ikr['data']['membrane.V'], 'purple', label = f'Only IKr, apd90 = {sqt1_carn_ikr["apd"]} ms')   
+axs[1, 1].legend()
+axs[1, 1].set_title('SQT1 + L-Carn', fontweight = 'bold')
+axs[1, 1].set_xlim([0, 500])
+axs[1, 1].set_xlabel('Time (ms)')
+axs[1, 1].set_ylabel('Membrane potential (mV)')
+
 
 #%% prepace function
 
