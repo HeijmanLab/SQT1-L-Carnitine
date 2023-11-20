@@ -959,6 +959,7 @@ plt.show()
 #%% IKr, IKs, Ik1 sensitivity analysis
 #ik1 wt = 0.81
 #ik1 sqt1 = 0.87
+# Show results w/o IKr scaling (161 ms)
 
 # Load the model.
 m = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
@@ -998,7 +999,7 @@ def sens_analysis(m, p, x, bcl, prepace, ik1 = True, iks = True, MT = False, car
         if MT and carn:
             sim.set_constant('ik1.ik1_scalar', 0.87)
         elif not MT and carn:
-            sim.set_constant('iks.iks_scalar', 0.81)
+            sim.set_constant('ik1.ik1_scalar', 0.81)
     
     # Pre-pace the simulation
     sim.pre(bcl * prepace)
@@ -1066,13 +1067,6 @@ sqt1_carn_ikr = sens_analysis(m = m, p = p, x = Lcarn_sqt1, bcl = bcl, prepace =
                      ik1 = False, iks = False, MT = True, carn = True) 
 
 
-plt.figure()
-plt.plot(wt_sens['data']['engine.time'], wt_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {wt_sens["apd"]} ms')   
-plt.plot(wt_noik1['data']['engine.time'], wt_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {wt_noik1["apd"]} ms')
-plt.plot(wt_noiks['data']['engine.time'], wt_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {wt_noiks["apd"]} ms')   
-plt.plot(wt_ikr['data']['engine.time'], wt_ikr['data']['membrane.V'], 'purple', label = f'Only IKr, apd90 = {wt_ikr["apd"]} ms')   
-plt.legend()    
-
 # Visualize the results
 fig, axs = plt.subplots(2, 2, figsize=(12, 18))
 
@@ -1119,6 +1113,7 @@ axs[1, 1].set_ylabel('Membrane potential (mV)')
 
 #%% prepace function
 
+# Add IK1 scaling as well. 
 def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False):
     """
     Pre-pace simulation and data storage.
@@ -1256,6 +1251,12 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
 WT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False)
 MT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
 MT_carn_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
+
+# Revision work on larger tissue (9 x 9 cm)
+WT_pp_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False)
+MT_pp_pace_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
+MT_carn_pp_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
+
 #%%  MT reentry function.
 
 def vulnerability_window_MT(inputs):
@@ -1295,7 +1296,7 @@ def vulnerability_window_MT(inputs):
     """
     
     # Set default parameters.
-    n = 400
+    n = 600
     t = 1000
     dur = 100
     dur_sim = 1000
@@ -1339,7 +1340,7 @@ def vulnerability_window_MT(inputs):
     s.set_constant('iks.iks_scalar', 1.35)
     
     # Load the pre-pacing state.
-    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_400_iks_1.0Hz.npy')
+    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_600_iks_1.0Hz.npy')
     s.set_state(pre_pace)
     
     # Run the model for the S1.
@@ -1427,7 +1428,7 @@ def vulnerability_window_WT(inputs):
     """
     
     # Set default parameters.
-    n = 400
+    n = 600
     t = 1000
     dur = 100
     dur_sim = 1000
@@ -1468,10 +1469,10 @@ def vulnerability_window_WT(inputs):
         s.set_constant(f'ikr.p{i+1}', param_list[i])
     
     # Set IKs.
-    s.set_constant('iks.iks_scalar', 1.35)
+    s.set_constant('iks.iks_scalar', 1.0)
     
     # Load the pre-pacing state.
-    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_400_iks_1.0Hz.npy')
+    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_600_iks_1.0Hz.npy')
     s.set_state(pre_pace)
     
     # Run the model for the S1.
@@ -1559,7 +1560,7 @@ def vulnerability_window_MT_Carn(inputs):
     """
     
     # Set default parameters.
-    n = 400
+    n = 600
     t = 1000
     dur = 100
     dur_sim = 1000
@@ -1600,10 +1601,10 @@ def vulnerability_window_MT_Carn(inputs):
         s.set_constant(f'ikr.p{i+1}', param_list[i])
     
     # Set IKs.
-    s.set_constant('iks.iks_scalar', 1.35)
+    s.set_constant('iks.iks_scalar', 0.88)
     
     # Load the pre-pacing state.
-    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_400_iks_1.0Hz.npy')
+    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_600_iks_1.0Hz.npy')
     s.set_state(pre_pace)
     
     # Run the model for the S1.
