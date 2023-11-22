@@ -17,11 +17,15 @@ import pandas as pd
 import os
 import time
 import multiprocessing
+from scipy.optimize import minimize
 
 # Set your working directory.
 work_dir = os.getcwd()
-work_dir = os.path.join(work_dir, 'Documents', 'GitHub', 'SQT1-L-Carnitine')
-os.chdir(work_dir)
+if 'SQT1-L-Carnitine' in work_dir:
+    os.chdir(work_dir)
+else:
+    work_dir = os.path.join(work_dir, 'Documents', 'GitHub', 'SQT1-L-Carnitine')
+    os.chdir(work_dir)
 files = [f for f in os.listdir('.') if os.path.isfile(f)]
 for f in files:
     print(f)
@@ -546,6 +550,240 @@ export_df_to_csv(steps = tail_steps, data = tail_WTc_model_sel, filename = 'tail
 export_df_to_csv(steps = steady_steps, data = steady_MTc_model_sel, filename = 'steady_MTc_model')
 export_df_to_csv(steps = tail_steps, data = tail_MTc_model_sel, filename = 'tail_MTc_model')
 
+#%% Optimize the fit for the IK1 current
+#ik1 wt = 0.81
+#ik1 sqt1 = 0.87
+
+# Load the model.
+m = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
+
+# Set cell type.
+m.set_value('cell.mode', 0)
+
+# Get intracellular potassium.
+ki = m.get('potassium.Ki')
+# Demote ki from a state to an ordinary variable; no longer dynamic.
+ki.demote()
+# Set rhs to 120 according to Odening et al. 2019.
+ki.set_rhs(120)
+
+def ik1_opt(x, m, WT = True, showerror = True, show = True):
+    
+    # Update the state variables
+    # state = m.initial_values(as_floats = True) 
+    # ssx_index = m.get('ik1.steep_sx').indice()
+    # midsx_index = m.get('ik1.mid_sx').indice()
+    # steepr_index = m.get('ik1.steep_r').indice()
+    # midr_index = m.get('ik1.mid_r').indice()
+    # state[ssx_index] = x[0]
+    # state[midsx_index] = x[1]
+    # state[steepr_index] = x[2]
+    # state[midr_index] = x[3]
+    # m.set_initial_values(state)
+    
+    # Get IK1 variables from the model.
+    ik1 = m.get('ik1.IK1')
+    ik1_ss = m.get('ik1.IK1_ss')
+    ik1b_ss = m.get('ik1.IK1b_ss')
+    ik1_ratio = m.get('ik1.ratio_ss')
+    
+    # Retrieve the python functions.
+    ik1ss_f = ik1_ss.pyfunc(use_numpy = True)
+    ik1bss_f = ik1b_ss.pyfunc(use_numpy = True)
+    ik1ratio_f = ik1_ratio.pyfunc(use_numpy = True)
+    
+    # Define a voltage range.
+    v = np.arange(-120, 80, 10)
+    
+    # Compare the ratios.
+    ref_x = [3.8115, 144.59, 9.493, 2.6]
+    ik1_r_ref = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = ref_x[0], mid_sx = ref_x[1], steep_r = ref_x[2], mid_r = ref_x[3])})
+    ik1_r = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = x[0], mid_sx = x[1], steep_r = x[2], mid_r = x[3])})
+    
+    
+    # Index only the voltages where the difference is relevant (-120 to -80 or -70).
+    voi_wt = [-120, -110, -100, -90, -80, -70]
+    voi_wt_pos = np.arange(-60, 80, 10)
+    voi_sqt1 = [-120, -110, -100, -90, -80]
+    df_voi_wt = ik1_r[ik1_r['voltage'].isin(voi_wt)]
+    df_voi_wt_pos = ik1_r[ik1_r['voltage'].isin(voi_wt_pos)]
+    df_voi_sqt1 = ik1_r[ik1_r['voltage'].isin(voi_sqt1)]
+    
+    # After -70 mV it was assumed that the difference was non-exisiting (i.e., 1)
+    exp_wt_neg = [0.828500726, 0.805659059, 0.80276339, 0.805416428, 0.827647086, 0.825545934]
+    exp_wt_pos = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    exp_wt = [0.828500726, 0.805659059, 0.80276339, 0.805416428, 0.827647086, 0.825545934, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    exp_sqt1 = [0.861585655, 0.853040538, 0.856887441, 0.870835239, 0.919004482, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    
+    # Average difference in the negative potentials
+    target_wt = 0.81
+    target_sqt1 = 0.87
+    
+    # Calculate the SSE for the conditions
+    error_wt_tot = sum((ik1_r['ik1'] - exp_wt)**2)
+    error_sqt1 = sum((df_voi_sqt1['ik1'] - target_sqt1)**2)
+    error_sqt1_tot = sum((ik1_r['ik1'] - exp_sqt1)**2) 
+    
+    # Divide the error in negative and positive part.
+    error_wt_neg = sum((df_voi_wt['ik1'] - exp_wt_neg)**2)
+    error_wt_pos = sum((df_voi_wt_pos['ik1'] - exp_wt_pos)**2)
+    
+    total_error_wt = (10 * error_wt_neg) + error_wt_pos
+    
+    # Plot the fits.
+    if show is True:
+        plt.figure()
+        plt.plot(v, ik1_r_ref['ik1'], 'k', label = 'ref')
+        plt.plot(v, ik1_r['ik1'], 'r', ls = 'dashed', label = 'fit')
+    
+    # Print the error
+    if showerror is True:
+        if WT is True:
+            print ("X = [%f,%f,%f,%f] # Error: %f, %f, %f"% (x[0], x[1], x[2], x[3], total_error_wt, error_wt_neg, error_wt_pos))
+            
+        else:
+            print ("X = [%f,%f,%f,%f] # Error: %f"% (x[0], x[1], x[2], x[3], error_sqt1_tot))
+            
+    if WT is True:
+        return(total_error_wt)
+    else:
+        return(error_sqt1_tot)
+            
+# Call the optimization function for the visualization of initial values
+
+x_ini = [3.8115, 144.59, 9.493, 2.6]
+initial = ik1_opt(x_ini, m = m, WT = True, showerror = True, show = True)
+
+# Perform the error minimization
+opt_ik1 = minimize(ik1_opt, x_ini, args = (m, True, True, False), method = 'Nelder-Mead', options = {'disp': True, 'maxiter' : 2000, 'adaptive': True}) 
+best_ik1 = opt_ik1.x
+
+# Best fit
+best_ik1_err = ik1_opt(best_ik1, m = m, WT = True, showerror = True, show = True)
+
+
+                                                                        
+# Minimize the error between 
+
+f = ik1.pyfunc(use_numpy=True)
+
+t = ik1_ratio.pyfunc(use_numpy = True)
+
+v = np.arange(-120, 0, 1)
+
+test = f(V = v, x = 1)
+test2 = t(V = v)
+
+plt.figure()
+plt.plot(v, test2)
+
+
+# Get numpy-ready callable function, with state variable V as argument
+f = ik1.pyfunc(use_numpy=True)
+
+# Remove binding to pacing mechanism before voltage coupling.
+pace.set_binding(None)
+
+# Get membrane potential.
+v = m.get('membrane.V')
+# Demote v from a state to an ordinary variable; no longer dynamic.
+v.demote()
+# right-hand side setting; value doesn't' matter because it gets linked to pacing mechanism.
+v.set_rhs(0)
+# Bind v's value to the pacing mechanism.
+v.set_binding('pace')
+
+# Get intracellular potassium.
+ki = m.get('potassium.Ki')
+# Demote ki from a state to an ordinary variable; no longer dynamic.
+ki.demote()
+# Set rhs to 120 according to Odening et al. 2019.
+ki.set_rhs(120)
+
+## Initialize the steps in patch-clamp protocol
+steps = np.arange(-120, -60, 10) 
+p = myokit.Protocol()
+for k,step in enumerate(steps):
+    # Voltage step for 100 ms
+    p.add_step(step, 100)
+t = p.characteristic_time()
+s = myokit.Simulation(m, p)
+
+def ik1_opti(p):
+    
+    # Reset to initial states and re-run simulation for every iteration of the error function.
+    s.reset()
+    
+    # Re-initiate the protocol.
+    s.set_protocol(p)
+    
+    # Set the maximum stepsize to 2ms to obtain better step curves.
+    s.set_max_step_size(2) 
+     
+    # Set the extracellular potassium concentration to Odening et al. 2019.
+    s.set_constant('extra.Ko', 5.4)
+    
+    # Set tolerance to counter suboptimal optimalisation with CVODE.
+    s.set_tolerance(1e-8, 1e-8)
+
+    # Run the simulation protocol and log several variables.
+    d = s.run(t, log = ['engine.time', 'membrane.V', 'ik1.IK1_ss', 'ik1.IK1b_ss', 'ik1.ratio_ss', 
+                        'ik1.sx2', 'ik1.r2'])
+    
+    # Split the log into smaller chunks to overlay; to get the individual steps.
+    ds = d.split_periodic(100, adjust=True)
+    
+    
+    
+    
+    
+    return ds
+
+test = ik1_opti(p = p)
+
+sub = np.asarray(test[0]['ik1.ratio_ss'])
+
+# Optimization to only affect the negative part of the IK1 current
+steep_sx = 5.8115
+mid_sx = 144.59
+steep_r = 9.493
+mid_r = 2.6
+
+# The new activation and rectification rates
+sx2 = 1 / (1 + exp(-(V + 2.5538 * extra.Ko + mid_sx) / (1.5692 * extra.Ko + steep_sx)))
+r2 = 1 / (1 + exp((V + 105.8 - mid_r * extra.Ko) / steep_r))
+
+
+
+# Optimize for sx2
+prot = myokit.Protocol()
+bcl = 1000
+prot.schedule(1, 20, 0.5, bcl)
+
+# Create a simulation object.
+sim = myokit.Simulation(m, prot)
+sim.pre(1000 * bcl)
+
+d = sim.run(bcl, log = ['engine.time', 'membrane.V', 'ik1.IK1_ss', 'ik1.IK1b_ss', 'ik1.ratio_ss'])
+ratio = np.asarray(d['ik1.ratio_ss'])
+
+plt.figure()
+for i in range(len(test)):
+    plt.plot(test[i]['ik1.ratio_ss'])
+
+
+
+#nernst check
+
+R = 8314  
+T = 310   
+F = 96485 
+RTF  = R*T/F
+
+EK = RTF * np.log(5.4 / 120)
+
+
+
 #%% Action potential effects
 
 # Load the model.
@@ -566,6 +804,7 @@ bcl = 1000
 
 # Create an event schedule.
 pace.schedule(1, 20, 0.5, bcl)
+
 
 def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     """
