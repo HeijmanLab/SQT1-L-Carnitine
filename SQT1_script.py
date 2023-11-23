@@ -568,90 +568,84 @@ ki.demote()
 ki.set_rhs(120)
 
 def ik1_opt(x, m, WT = True, showerror = True, show = True):
-    
-    # Update the state variables
-    # state = m.initial_values(as_floats = True) 
-    # ssx_index = m.get('ik1.steep_sx').indice()
-    # midsx_index = m.get('ik1.mid_sx').indice()
-    # steepr_index = m.get('ik1.steep_r').indice()
-    # midr_index = m.get('ik1.mid_r').indice()
-    # state[ssx_index] = x[0]
-    # state[midsx_index] = x[1]
-    # state[steepr_index] = x[2]
-    # state[midr_index] = x[3]
-    # m.set_initial_values(state)
-    
-    # Get IK1 variables from the model.
-    ik1 = m.get('ik1.IK1')
-    ik1_ss = m.get('ik1.IK1_ss')
-    ik1b_ss = m.get('ik1.IK1b_ss')
-    ik1_ratio = m.get('ik1.ratio_ss')
-    
-    # Retrieve the python functions.
-    ik1ss_f = ik1_ss.pyfunc(use_numpy = True)
-    ik1bss_f = ik1b_ss.pyfunc(use_numpy = True)
-    ik1ratio_f = ik1_ratio.pyfunc(use_numpy = True)
-    
-    # Define a voltage range.
+
     v = np.arange(-120, 80, 10)
     
+    # The new activation and rectification rates
+    sx = 1 / (1 + np.exp(-(v + 2.5538 * 5.4 + 144.59) / (1.5692 * 5.4 + 3.8115)))
+    r = 1 / (1 + np.exp((v + 105.8 - 2.6 * 5.4) / 9.493))
+    sx2 = 1 / (1 + np.exp(-(v + 2.5538 * 5.4 + x[1]) / (1.5692 * 5.4 + x[0])))
+    #sx2 = 1 / (1 + np.exp(-(v + 2.5538 * 5.4 + 144.59) / (1.5692 * 5.4 + 3.8115)))
+    r2 = 1 / (1 + np.exp((v + x[3] - 2.6 * 5.4) / x[2]))
+    
+    # The nernst potential is based on 120 Ki and 5.4 Ko which results in -82.84 mV
+    IK1_ss = r * sx * (v - -82.84) # Get the actual nernst.EK for IK1
+    IK1b_ss = r2 * sx2 * (v - -82.84)
+    ratio_ss = IK1b_ss/IK1_ss #needs to have 15% decrease in negative direction
+    
     # Compare the ratios.
-    ref_x = [3.8115, 144.59, 9.493, 2.6]
-    ik1_r_ref = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = ref_x[0], mid_sx = ref_x[1], steep_r = ref_x[2], mid_r = ref_x[3])})
-    ik1_r = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = x[0], mid_sx = x[1], steep_r = x[2], mid_r = x[3])})
+    # ref_x = [3.8115, 144.59, 9.493, 2.6]
+    # ik1_r_ref = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = ref_x[0], mid_sx = ref_x[1], steep_r = ref_x[2], mid_r = ref_x[3])})
+    # ik1_r = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = x[0], mid_sx = x[1], steep_r = x[2], mid_r = x[3])})
     
     
     # Index only the voltages where the difference is relevant (-120 to -80 or -70).
-    voi_wt = [-120, -110, -100, -90, -80, -70]
-    voi_wt_pos = np.arange(-60, 80, 10)
-    voi_sqt1 = [-120, -110, -100, -90, -80]
-    df_voi_wt = ik1_r[ik1_r['voltage'].isin(voi_wt)]
-    df_voi_wt_pos = ik1_r[ik1_r['voltage'].isin(voi_wt_pos)]
-    df_voi_sqt1 = ik1_r[ik1_r['voltage'].isin(voi_sqt1)]
+    # voi_wt = [-120, -110, -100, -90, -80, -70]
+    # voi_wt_pos = np.arange(-60, 80, 10)
+    # voi_sqt1 = [-120, -110, -100, -90, -80]
+    # df_voi_wt = ik1_r[ik1_r['voltage'].isin(voi_wt)]
+    # df_voi_wt_pos = ik1_r[ik1_r['voltage'].isin(voi_wt_pos)]
+    # df_voi_sqt1 = ik1_r[ik1_r['voltage'].isin(voi_sqt1)]
     
     # After -70 mV it was assumed that the difference was non-exisiting (i.e., 1)
-    exp_wt_neg = [0.828500726, 0.805659059, 0.80276339, 0.805416428, 0.827647086, 0.825545934]
-    exp_wt_pos = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    # exp_wt_neg = [0.828500726, 0.805659059, 0.80276339, 0.805416428, 0.827647086, 0.825545934]
+    # exp_wt_pos = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    
     exp_wt = [0.828500726, 0.805659059, 0.80276339, 0.805416428, 0.827647086, 0.825545934, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    #exp_wt = [0.81, 0.81, 0.81, 0.81, 0.81, 0.81, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     exp_sqt1 = [0.861585655, 0.853040538, 0.856887441, 0.870835239, 0.919004482, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     
-    # Average difference in the negative potentials
-    target_wt = 0.81
-    target_sqt1 = 0.87
+    #weights = [1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    #error_wt = sum(weights * (ratio_ss - exp_wt)**2) + 0.02 * (x[0] - 3.8115)**2
+    error_wt = sum((ratio_ss - exp_wt)**2)
     
-    # Calculate the SSE for the conditions
-    error_wt_tot = sum((ik1_r['ik1'] - exp_wt)**2)
-    error_sqt1 = sum((df_voi_sqt1['ik1'] - target_sqt1)**2)
-    error_sqt1_tot = sum((ik1_r['ik1'] - exp_sqt1)**2) 
+    # # Average difference in the negative potentials
+    # target_wt = 0.81
+    # target_sqt1 = 0.87
     
-    # Divide the error in negative and positive part.
-    error_wt_neg = sum((df_voi_wt['ik1'] - exp_wt_neg)**2)
-    error_wt_pos = sum((df_voi_wt_pos['ik1'] - exp_wt_pos)**2)
+    # # Calculate the SSE for the conditions
+    # error_wt_tot = sum((ik1_r['ik1'] - exp_wt)**2)
+    # error_sqt1 = sum((df_voi_sqt1['ik1'] - target_sqt1)**2)
+    # error_sqt1_tot = sum((ik1_r['ik1'] - exp_sqt1)**2) 
     
-    total_error_wt = (10 * error_wt_neg) + error_wt_pos
+    # # Divide the error in negative and positive part.
+    # error_wt_neg = sum((df_voi_wt['ik1'] - exp_wt_neg)**2)
+    # error_wt_pos = sum((df_voi_wt_pos['ik1'] - exp_wt_pos)**2)
+    
+    # # total_error_wt = (10 * error_wt_neg) + error_wt_pos
     
     # Plot the fits.
     if show is True:
         plt.figure()
-        plt.plot(v, ik1_r_ref['ik1'], 'k', label = 'ref')
-        plt.plot(v, ik1_r['ik1'], 'r', ls = 'dashed', label = 'fit')
+        plt.plot(v, exp_wt, 'k', label = 'ref')
+        plt.plot(v, ratio_ss, 'r', ls = 'dashed', label = 'fit')
     
     # Print the error
     if showerror is True:
         if WT is True:
-            print ("X = [%f,%f,%f,%f] # Error: %f, %f, %f"% (x[0], x[1], x[2], x[3], total_error_wt, error_wt_neg, error_wt_pos))
+            print ("X = [%f,%f,%f,%f] # Error: %f"% (x[0], x[1], x[2], x[3], error_wt))
             
         else:
             print ("X = [%f,%f,%f,%f] # Error: %f"% (x[0], x[1], x[2], x[3], error_sqt1_tot))
             
     if WT is True:
-        return(total_error_wt)
+        return(error_wt)
     else:
         return(error_sqt1_tot)
             
 # Call the optimization function for the visualization of initial values
 
-x_ini = [3.8115, 144.59, 9.493, 2.6]
+x_ini = [5.8115, 144.59, 9.493, 105.8]
 initial = ik1_opt(x_ini, m = m, WT = True, showerror = True, show = True)
 
 # Perform the error minimization
@@ -662,7 +656,8 @@ best_ik1 = opt_ik1.x
 best_ik1_err = ik1_opt(best_ik1, m = m, WT = True, showerror = True, show = True)
 
 
-                                                                        
+plt.figure()
+plt.plot(v, 1.0  - (0.2/(1 +np.exp((v--70)/1))))
 # Minimize the error between 
 
 f = ik1.pyfunc(use_numpy=True)
