@@ -85,10 +85,7 @@ ik1.x           = 1     # xk1=1             38
 ryr.Jrelnp      = 0     # Jrelnp=0
 ryr.Jrelp       = 0     # Jrelp=0           40
 camk.CaMKt      = 0     # CaMKt=0           41
-ik1.steep_sx = 5.8115
-ik1.mid_sx = 144.59
-ik1.steep_r = 9.493
-ik1.mid_r = 2.6
+
 #
 # Engine variables
 #
@@ -602,28 +599,12 @@ GK1 = piecewise(cell.mode == 0, base, cell.mode == 1, 1.2*base, 1.3*base)
     desc: Conductivity of IK1 channels, cell-type dependent
 IK1 = ik1_scalar * (GK1 * sqrt(extra.Ko) * r * x * (V - nernst.EK))
     desc: Inward rectifier Potassium current
-ik1_scalar = 1.0
-
-# Optimization to only affect the negative part of the IK1 current
-#steep_sx= 5.8115
-#mid_sx = 144.59
-#steep_r = 9.493
-#mid_r = 2.6
-
-dot(steep_sx) = 5.8115
-dot(mid_sx) = 144.59
-dot(steep_r) = 9.493
-dot(mid_r)= 2.6
-
-# The new activation and rectification rates
-sx2 = 1 / (1 + exp(-(V + 2.5538 * extra.Ko + mid_sx) / (1.5692 * extra.Ko + steep_sx)))
-r2 = 1 / (1 + exp((V + 105.8 - mid_r * extra.Ko) / steep_r))
-
-# The nernst potential is based on 120 Ki and 5.4 Ko which results in -82.84 mV
-IK1_ss = ik1_scalar * (GK1 * sqrt(extra.Ko) * r * sx * (V - -82.84)) # Get the actual nernst.EK for IK1
-IK1b_ss = ik1_scalar * (GK1 * sqrt(extra.Ko) * r2 * sx2 * (V - -82.84))
-ratio_ss = IK1b_ss/IK1_ss #needs to have 15% decrease in negative direction
-
+ 
+# Scalars to implement the effects of L-Carn on IK1 in the negative component.   
+ik1_scalar = piecewise(ik1_carn == 0, ik1_scalar_wt, ik1_carn == 1, ik1_scalar_mt, 1)
+ik1_carn = 2 # 0 = WT + L-carn, 1 = SQT1 + L-carn, 2 = No L-carn
+ik1_scalar_wt = 1 - (0.19 / (1 + exp((V - -70) / 1)))
+ik1_scalar_mt = 1 - (0.13 / (1 + exp((V - -80) / 1)))
 
 #
 # INaCa :: Sodium/Calcium exchange current

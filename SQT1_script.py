@@ -273,13 +273,17 @@ def err_func(x, xfull, inds, carn_steady, carn_tail, steady_sqt, tail_sqt,
     if mt_flag is False:
         if carn_flag is False: 
             s.set_constant('iks.iks_scalar', 1)
+            s.set_constant('ik1.ik1_carn', 2)
         else:
             s.set_constant('iks.iks_scalar', 0.75)
+            s.set_constant('ik1.ik1_carn', 0) # WT + L-carn
     else:
         if carn_flag is False:
             s.set_constant('iks.iks_scalar', 1.35)
+            s.set_constant('ik1.ik1_carn', 2)
         else: 
             s.set_constant('iks.iks_scalar', 0.88)
+            s.set_constant('ik1.ik1_scalar', 1) # MT + L-carn
 
     # Run the simulation protocol and log several variables.
     d = s.run(t_act)
@@ -549,236 +553,6 @@ export_df_to_csv(steps = steady_steps, data = steady_WTc_model_sel, filename = '
 export_df_to_csv(steps = tail_steps, data = tail_WTc_model_sel, filename = 'tail_WTc_model')
 export_df_to_csv(steps = steady_steps, data = steady_MTc_model_sel, filename = 'steady_MTc_model')
 export_df_to_csv(steps = tail_steps, data = tail_MTc_model_sel, filename = 'tail_MTc_model')
-
-#%% Optimize the fit for the IK1 current
-#ik1 wt = 0.81
-#ik1 sqt1 = 0.87
-
-# Load the model.
-m = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
-
-# Set cell type.
-m.set_value('cell.mode', 0)
-
-# Get intracellular potassium.
-ki = m.get('potassium.Ki')
-# Demote ki from a state to an ordinary variable; no longer dynamic.
-ki.demote()
-# Set rhs to 120 according to Odening et al. 2019.
-ki.set_rhs(120)
-
-def ik1_opt(x, m, WT = True, showerror = True, show = True):
-
-    v = np.arange(-120, 80, 10)
-    
-    # The new activation and rectification rates
-    sx = 1 / (1 + np.exp(-(v + 2.5538 * 5.4 + 144.59) / (1.5692 * 5.4 + 3.8115)))
-    r = 1 / (1 + np.exp((v + 105.8 - 2.6 * 5.4) / 9.493))
-    sx2 = 1 / (1 + np.exp(-(v + 2.5538 * 5.4 + x[1]) / (1.5692 * 5.4 + x[0])))
-    #sx2 = 1 / (1 + np.exp(-(v + 2.5538 * 5.4 + 144.59) / (1.5692 * 5.4 + 3.8115)))
-    r2 = 1 / (1 + np.exp((v + x[3] - 2.6 * 5.4) / x[2]))
-    
-    # The nernst potential is based on 120 Ki and 5.4 Ko which results in -82.84 mV
-    IK1_ss = r * sx * (v - -82.84) # Get the actual nernst.EK for IK1
-    IK1b_ss = r2 * sx2 * (v - -82.84)
-    ratio_ss = IK1b_ss/IK1_ss #needs to have 15% decrease in negative direction
-    
-    # Compare the ratios.
-    # ref_x = [3.8115, 144.59, 9.493, 2.6]
-    # ik1_r_ref = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = ref_x[0], mid_sx = ref_x[1], steep_r = ref_x[2], mid_r = ref_x[3])})
-    # ik1_r = pd.DataFrame({'voltage': v, 'ik1': ik1ratio_f(V = v, steep_sx = x[0], mid_sx = x[1], steep_r = x[2], mid_r = x[3])})
-    
-    
-    # Index only the voltages where the difference is relevant (-120 to -80 or -70).
-    # voi_wt = [-120, -110, -100, -90, -80, -70]
-    # voi_wt_pos = np.arange(-60, 80, 10)
-    # voi_sqt1 = [-120, -110, -100, -90, -80]
-    # df_voi_wt = ik1_r[ik1_r['voltage'].isin(voi_wt)]
-    # df_voi_wt_pos = ik1_r[ik1_r['voltage'].isin(voi_wt_pos)]
-    # df_voi_sqt1 = ik1_r[ik1_r['voltage'].isin(voi_sqt1)]
-    
-    # After -70 mV it was assumed that the difference was non-exisiting (i.e., 1)
-    # exp_wt_neg = [0.828500726, 0.805659059, 0.80276339, 0.805416428, 0.827647086, 0.825545934]
-    # exp_wt_pos = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    
-    exp_wt = [0.828500726, 0.805659059, 0.80276339, 0.805416428, 0.827647086, 0.825545934, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    #exp_wt = [0.81, 0.81, 0.81, 0.81, 0.81, 0.81, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    exp_sqt1 = [0.861585655, 0.853040538, 0.856887441, 0.870835239, 0.919004482, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    
-    #weights = [1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    #error_wt = sum(weights * (ratio_ss - exp_wt)**2) + 0.02 * (x[0] - 3.8115)**2
-    error_wt = sum((ratio_ss - exp_wt)**2)
-    
-    # # Average difference in the negative potentials
-    # target_wt = 0.81
-    # target_sqt1 = 0.87
-    
-    # # Calculate the SSE for the conditions
-    # error_wt_tot = sum((ik1_r['ik1'] - exp_wt)**2)
-    # error_sqt1 = sum((df_voi_sqt1['ik1'] - target_sqt1)**2)
-    # error_sqt1_tot = sum((ik1_r['ik1'] - exp_sqt1)**2) 
-    
-    # # Divide the error in negative and positive part.
-    # error_wt_neg = sum((df_voi_wt['ik1'] - exp_wt_neg)**2)
-    # error_wt_pos = sum((df_voi_wt_pos['ik1'] - exp_wt_pos)**2)
-    
-    # # total_error_wt = (10 * error_wt_neg) + error_wt_pos
-    
-    # Plot the fits.
-    if show is True:
-        plt.figure()
-        plt.plot(v, exp_wt, 'k', label = 'ref')
-        plt.plot(v, ratio_ss, 'r', ls = 'dashed', label = 'fit')
-    
-    # Print the error
-    if showerror is True:
-        if WT is True:
-            print ("X = [%f,%f,%f,%f] # Error: %f"% (x[0], x[1], x[2], x[3], error_wt))
-            
-        else:
-            print ("X = [%f,%f,%f,%f] # Error: %f"% (x[0], x[1], x[2], x[3], error_sqt1_tot))
-            
-    if WT is True:
-        return(error_wt)
-    else:
-        return(error_sqt1_tot)
-            
-# Call the optimization function for the visualization of initial values
-
-x_ini = [5.8115, 144.59, 9.493, 105.8]
-initial = ik1_opt(x_ini, m = m, WT = True, showerror = True, show = True)
-
-# Perform the error minimization
-opt_ik1 = minimize(ik1_opt, x_ini, args = (m, True, True, False), method = 'Nelder-Mead', options = {'disp': True, 'maxiter' : 2000, 'adaptive': True}) 
-best_ik1 = opt_ik1.x
-
-# Best fit
-best_ik1_err = ik1_opt(best_ik1, m = m, WT = True, showerror = True, show = True)
-
-
-plt.figure()
-plt.plot(v, 1.0  - (0.2/(1 +np.exp((v--70)/1))))
-# Minimize the error between 
-
-f = ik1.pyfunc(use_numpy=True)
-
-t = ik1_ratio.pyfunc(use_numpy = True)
-
-v = np.arange(-120, 0, 1)
-
-test = f(V = v, x = 1)
-test2 = t(V = v)
-
-plt.figure()
-plt.plot(v, test2)
-
-
-# Get numpy-ready callable function, with state variable V as argument
-f = ik1.pyfunc(use_numpy=True)
-
-# Remove binding to pacing mechanism before voltage coupling.
-pace.set_binding(None)
-
-# Get membrane potential.
-v = m.get('membrane.V')
-# Demote v from a state to an ordinary variable; no longer dynamic.
-v.demote()
-# right-hand side setting; value doesn't' matter because it gets linked to pacing mechanism.
-v.set_rhs(0)
-# Bind v's value to the pacing mechanism.
-v.set_binding('pace')
-
-# Get intracellular potassium.
-ki = m.get('potassium.Ki')
-# Demote ki from a state to an ordinary variable; no longer dynamic.
-ki.demote()
-# Set rhs to 120 according to Odening et al. 2019.
-ki.set_rhs(120)
-
-## Initialize the steps in patch-clamp protocol
-steps = np.arange(-120, -60, 10) 
-p = myokit.Protocol()
-for k,step in enumerate(steps):
-    # Voltage step for 100 ms
-    p.add_step(step, 100)
-t = p.characteristic_time()
-s = myokit.Simulation(m, p)
-
-def ik1_opti(p):
-    
-    # Reset to initial states and re-run simulation for every iteration of the error function.
-    s.reset()
-    
-    # Re-initiate the protocol.
-    s.set_protocol(p)
-    
-    # Set the maximum stepsize to 2ms to obtain better step curves.
-    s.set_max_step_size(2) 
-     
-    # Set the extracellular potassium concentration to Odening et al. 2019.
-    s.set_constant('extra.Ko', 5.4)
-    
-    # Set tolerance to counter suboptimal optimalisation with CVODE.
-    s.set_tolerance(1e-8, 1e-8)
-
-    # Run the simulation protocol and log several variables.
-    d = s.run(t, log = ['engine.time', 'membrane.V', 'ik1.IK1_ss', 'ik1.IK1b_ss', 'ik1.ratio_ss', 
-                        'ik1.sx2', 'ik1.r2'])
-    
-    # Split the log into smaller chunks to overlay; to get the individual steps.
-    ds = d.split_periodic(100, adjust=True)
-    
-    
-    
-    
-    
-    return ds
-
-test = ik1_opti(p = p)
-
-sub = np.asarray(test[0]['ik1.ratio_ss'])
-
-# Optimization to only affect the negative part of the IK1 current
-steep_sx = 5.8115
-mid_sx = 144.59
-steep_r = 9.493
-mid_r = 2.6
-
-# The new activation and rectification rates
-sx2 = 1 / (1 + exp(-(V + 2.5538 * extra.Ko + mid_sx) / (1.5692 * extra.Ko + steep_sx)))
-r2 = 1 / (1 + exp((V + 105.8 - mid_r * extra.Ko) / steep_r))
-
-
-
-# Optimize for sx2
-prot = myokit.Protocol()
-bcl = 1000
-prot.schedule(1, 20, 0.5, bcl)
-
-# Create a simulation object.
-sim = myokit.Simulation(m, prot)
-sim.pre(1000 * bcl)
-
-d = sim.run(bcl, log = ['engine.time', 'membrane.V', 'ik1.IK1_ss', 'ik1.IK1b_ss', 'ik1.ratio_ss'])
-ratio = np.asarray(d['ik1.ratio_ss'])
-
-plt.figure()
-for i in range(len(test)):
-    plt.plot(test[i]['ik1.ratio_ss'])
-
-
-
-#nernst check
-
-R = 8314  
-T = 310   
-F = 96485 
-RTF  = R*T/F
-
-EK = RTF * np.log(5.4 / 120)
-
-
-
 #%% Action potential effects
 
 # Load the model.
@@ -862,19 +636,23 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     if mt_flag is False:
         if carn_flag is False: 
             sim.set_constant('iks.iks_scalar', 1)
+            sim.set_constant('ik1.ik1_carn', 2)
         else:
             sim.set_constant('iks.iks_scalar', 0.75)
+            sim.set_constant('ik1.ik1_carn', 0) # WT + L-carn
     else:
         if carn_flag is False:
             sim.set_constant('iks.iks_scalar', 1.35)
+            sim.set_constant('ik1.ik1_carn', 2)
         else: 
             sim.set_constant('iks.iks_scalar', 0.88)
+            sim.set_constant('ik1.ik1_scalar', 1) # MT + L-carn
     
     # Pre-pace the model.
     sim.pre(prepace * bcl)
     
     # Run the simulation and calculate the APD90.
-    vt = 0.9 * sim.state()[m.get('membrane.V').indice()]
+    vt = 0.9 * sim.state()[m.get('membrane.V').index()]
     data, apd = sim.run(bcl, log = ['engine.time', 'membrane.V', 'ikr.IKr'], apd_variable = 'membrane.V', apd_threshold = vt)
     
     # Get IKr out of the simulation.
@@ -958,9 +736,6 @@ axs[2, 1].set_xlim([0, 500])
 # Adjust layout for better spacing
 plt.tight_layout()
 
-# Show the plots
-plt.show()
-
 # Export to GraphPad.
 export_dict_to_csv_AP(wt_ap_endo, base_filename = 'AP_WT_endo')
 export_dict_to_csv_AP(Lcarn_wt_ap_endo, base_filename = 'AP_WTCarn_endo')
@@ -1014,9 +789,6 @@ axes[2].set_xticklabels(rel_apd_labels)
 
 # Adjust layout.
 plt.tight_layout()
-
-# Show the plots.
-plt.show()
 #%% Rabbit ventricular model
 
 # Load the rabbit model
@@ -1186,9 +958,8 @@ axs[1].set_xlabel('Time (ms)')
 axs[1].set_ylabel('Membrane potential (mV)')
 axs[1].set_xlim([0, 500])
 
-# Tidy up the plots
+# Tidy up the plots.
 plt.tight_layout()
-plt.show()
 
 #%% IKr, IKs, Ik1 sensitivity analysis
 #ik1 wt = 0.81
@@ -1231,9 +1002,9 @@ def sens_analysis(m, p, x, bcl, prepace, ik1 = True, iks = True, MT = False, car
     # Scale IK1 according to conditions
     if ik1:
         if MT and carn:
-            sim.set_constant('ik1.ik1_scalar', 0.87)
+            sim.set_constant('ik1.ik1_carn', 1)
         elif not MT and carn:
-            sim.set_constant('ik1.ik1_scalar', 0.81)
+            sim.set_constant('ik1.ik1_carn', 0)
     
     # Pre-pace the simulation
     sim.pre(bcl * prepace)
@@ -1274,6 +1045,9 @@ wt_carn_noiks = sens_analysis(m = m, p = p, x = Lcarn_wt, bcl = bcl, prepace = 1
 wt_carn_ikr = sens_analysis(m = m, p = p, x = Lcarn_wt, bcl = bcl, prepace = 1000, 
                      ik1 = False, iks = False, MT = False, carn = True) 
 
+wt_carn_noikr = sens_analysis(m = m, p = p, x = x_wt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = False, MT = False, carn = True) 
+
 # SQT1 simulations
 sqt1_sens = sens_analysis(m = m, p = p, x = x_default_sqt, bcl = bcl, prepace = 1000, 
                      ik1 = True, iks = True, MT = True, carn = False) 
@@ -1300,8 +1074,11 @@ sqt1_carn_noiks = sens_analysis(m = m, p = p, x = Lcarn_sqt1, bcl = bcl, prepace
 sqt1_carn_ikr = sens_analysis(m = m, p = p, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, 
                      ik1 = False, iks = False, MT = True, carn = True) 
 
+sqt1_carn_noikr = sens_analysis(m = m, p = p, x = x_default_sqt, bcl = bcl, prepace = 1000, 
+                     ik1 = False, iks = False, MT = True, carn = True) 
 
-# Visualize the results
+
+# Visualize the results.
 fig, axs = plt.subplots(2, 2, figsize=(12, 18))
 
 axs[0, 0].plot(wt_sens['data']['engine.time'], wt_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {wt_sens["apd"]} ms')   
@@ -1344,7 +1121,34 @@ axs[1, 1].set_xlim([0, 500])
 axs[1, 1].set_xlabel('Time (ms)')
 axs[1, 1].set_ylabel('Membrane potential (mV)')
 
+# Tidy the plots.
+plt.tight_layout()
 
+# Only plot the results of L-carn.
+fig, axs = plt.subplots(1, 2, figsize=(12, 18))
+
+axs[0].plot(wt_carn_sens['data']['engine.time'], wt_carn_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {wt_carn_sens["apd"]} ms')   
+axs[0].plot(wt_carn_noik1['data']['engine.time'], wt_carn_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {wt_carn_noik1["apd"]} ms')
+axs[0].plot(wt_carn_noiks['data']['engine.time'], wt_carn_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {wt_carn_noiks["apd"]} ms')   
+axs[0].plot(wt_carn_noikr['data']['engine.time'], wt_carn_noikr['data']['membrane.V'], 'purple', label = f'No IKr, apd90 = {wt_carn_noikr["apd"]} ms')   
+axs[0].legend()
+axs[0].set_title('WT + L-Carn', fontweight = 'bold')
+axs[0].set_xlim([0, 500])
+axs[0].set_xlabel('Time (ms)')
+axs[0].set_ylabel('Membrane potential (mV)')
+
+axs[1].plot(sqt1_carn_sens['data']['engine.time'], sqt1_carn_sens['data']['membrane.V'], 'k', label = f'All, apd90 = {sqt1_carn_sens["apd"]} ms')   
+axs[1].plot(sqt1_carn_noik1['data']['engine.time'], sqt1_carn_noik1['data']['membrane.V'], 'orange', label = f'No IK1, apd90 = {sqt1_carn_noik1["apd"]} ms')
+axs[1].plot(sqt1_carn_noiks['data']['engine.time'], sqt1_carn_noiks['data']['membrane.V'], 'blue', label = f'No IKs, apd90 = {sqt1_carn_noiks["apd"]} ms')   
+axs[1].plot(sqt1_carn_noikr['data']['engine.time'], sqt1_carn_noikr['data']['membrane.V'], 'purple', label = f'No IKr, apd90 = {sqt1_carn_noikr["apd"]} ms')   
+axs[1].legend()
+axs[1].set_title('SQT1 + L-Carn', fontweight = 'bold')
+axs[1].set_xlim([0, 500])
+axs[1].set_xlabel('Time (ms)')
+axs[1].set_ylabel('Membrane potential (mV)')
+
+# Tidy up the plot.
+plt.tight_layout()
 #%% prepace function
 
 # Add IK1 scaling as well. 
@@ -1442,22 +1246,27 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
     s.set_conductance(conduct, conduct)
     s.set_step_size(0.01)
     s.set_state(pre_state) 
-    
-    # Conditional flags.
-    if WT is False: 
-        for i in range(len(default_sqt)):
-            s.set_constant(f'ikr.p{i+1}', default_sqt[i])
-        s.set_constant('iks.iks_scalar', 1.35)
-    else:
-        for i in range(len(default_wt)):
-            s.set_constant(f'ikr.p{i+1}', default_wt[i])
-        s.set_constant('iks.iks_scalar', 1)
-    
-    if carn is True:
+   
+    # Conditional flags
+    if not WT and carn:
         for i in range(len(carn_list)):
             s.set_constant(f'ikr.p{i+1}', carn_list[i])
-        s.set_constant('iks.iks_scalar', 0.88)
-  
+        s.set_constant('iks.iks_scalar', 0.88) # SQT1 + L-carn
+        s.set_constant('ik1.ik1_carn', 1) # SQT1 + L-carn
+    
+    elif not WT and not carn:
+        for i in range(len(default_sqt)):
+            s.set_constant(f'ikr.p{i+1}', default_sqt[i])
+        s.set_constant('iks.iks_scalar', 1.35) # SQT1
+        s.set_constant('ik1.ik1_carn', 2) # No L-Carn
+        
+    elif WT and not carn:
+        for i in range(len(default_wt)):
+            s.set_constant(f'ikr.p{i+1}', default_wt[i])
+        s.set_constant('iks.iks_scalar', 1) # WT
+        s.set_constant('ik1.ik1_carn', 2) # No L-Carn
+            
+
     # Generate the first depolarization.
     pre = s.run(dur, log = ['engine.time', 'membrane.V'], log_interval = interval)
     state = s.state()
@@ -1481,6 +1290,123 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
       
     return(dict(state = state, pre = pre, block = block))
 
+
+def pre_pace2(n, t, dur, conduct, carn_list, interval, pp, WT=False, carn=False):
+    """
+    Pre-pace simulation and data storage.
+
+    This function performs pre-pacing simulation using a given model and pacing protocol. The simulation is performed to achieve steady-state before the main pacing simulation. The results from the pre-pacing simulation are saved, and the state data can be used as the initial state for subsequent pacing simulations.
+
+    First, cellular pre-pacing is performed, after which 2D tissue pre-pacing is performed.
+
+    Parameters:
+    ----------
+    n : int
+        The number of cells in the 2D simulation grid.
+
+    t : int
+        The initial pacing time in milliseconds (ms).
+
+    dur : int
+        The duration of the pre-pacing simulation in milliseconds (ms).
+
+    conduct : float
+        The cell-cell conductance in the 2D simulation.
+
+    carn_list : list of float
+        List of parameter values for the iKr (rapid delayed rectifier potassium current) model components when L-carnitine treatment is applied.
+
+    interval : float
+        The time interval between logged data points during the pre-pacing simulation in milliseconds (ms).
+
+    pp : int
+        The pre-pacing duration in milliseconds (ms) to reach steady-state.
+
+    WT : bool, optional (default = False)
+        Flag indicating whether to simulate the pre-pacing for WT (Wild Type) condition.
+
+    carn : bool, optional (default = False)
+        Flag indicating whether to simulate the pre-pacing with L-carnitine treatment.
+
+    Returns:
+    -------
+    dict
+        A dictionary containing the following elements:
+        - 'state': The state data obtained after the pre-pacing simulation, which can be used as the initial state for subsequent pacing simulations.
+        - 'pre': The logged data during the pre-pacing simulation, including time and membrane potential (V).
+        - 'block': The 2D simulation block containing the membrane potential (V) data for all cells in the grid.
+    """
+
+    # Load the model and set the input parameters.
+    model = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
+    model.set_value('cell.mode', 0)
+
+    # Initialize the default parameters
+    default_sqt = [0.029412, -38.65, 19.46, 16.49, 6.76, 0.0003, 14.1, -5, -3.3328, 5.1237, 2]
+    default_wt = [0.029412, 15, 22.4, 14.1, 6.5, 0.0003, 14.1, -5, -3.3328, 5.1237, 1]
+
+    # Initialize a protocol.
+    prot = myokit.Protocol()
+
+    # Set the bcl to 1000 ms.
+    bcl = 1000
+
+    hz = 1 / (bcl / 1000)
+
+    # create an event schedule.
+    prot.schedule(1, 20, 0.5, bcl, 0)
+
+    # Create a simulation object.
+    sim_pre = myokit.Simulation(model, prot)
+
+    # Pre-pace the model to steady state.
+    sim_pre.pre(pp)
+
+    # Save the pre-paced states.
+    pre_state = sim_pre.state()
+
+    # Create a pacing protocol.
+    p = myokit.pacing.blocktrain(t, 1, 0, 1, 0)
+    s = myokit.SimulationOpenCL(model, p, ncells=[n, n])
+    s.set_paced_cells(3, n, 0, 0)
+    s.set_conductance(conduct, conduct)
+    s.set_step_size(0.01)
+    s.set_state(pre_state)
+
+    # Conditional flags
+    if not WT:
+        if carn:
+            param_list = carn_list
+            iks_scalar_value = 0.88
+            ik1_carn_value = 1
+        else:
+            param_list = default_sqt
+            iks_scalar_value = 1.35
+            ik1_carn_value = 2
+    else:
+        param_list = default_wt
+        iks_scalar_value = 1
+        ik1_carn_value = 2
+
+    # Set constants based on conditional flags
+    for i, param_value in enumerate(param_list):
+        s.set_constant(f'ikr.p{i + 1}', param_value)
+    s.set_constant('iks.iks_scalar', iks_scalar_value)
+    s.set_constant('ik1.ik1_carn', ik1_carn_value)
+
+    # Generate the first depolarization.
+    pre = s.run(dur, log=['engine.time', 'membrane.V'], log_interval=interval)
+    state = s.state()
+    block = pre.block2d()
+
+    # Save the list with numpy.
+    condition_str = 'WT' if WT else 'MT'
+    carn_str = '_carn' if carn else ''
+    np.save(f'pre_pace{pp}_{condition_str}{carn_str}_{dur}_cell_{n}_iks_{hz}Hz_v2.npy', state)
+    block.save(f'2D_sim_{condition_str}{carn_str}_pre{pp}_cell_{n}_iks_{hz}Hz_v2.zip')
+
+    return {'state': state, 'pre': pre, 'block': block}
+
 # Run the 2D pre-pace function. 
 WT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False)
 MT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
@@ -1490,6 +1416,11 @@ MT_carn_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interva
 WT_pp_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False)
 MT_pp_pace_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
 MT_carn_pp_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
+
+# New function 
+WT_pp_large2 = pre_pace2(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False)
+MT_pp_pace_large2 = pre_pace2(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
+MT_carn_pp_large2 = pre_pace2(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
 
 #%%  MT reentry function.
 
