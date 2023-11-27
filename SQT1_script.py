@@ -575,7 +575,7 @@ bcl = 1000
 pace.schedule(1, 20, 0.5, bcl)
 
 
-def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
+def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = False):
     """
     Action potential effects
     
@@ -604,6 +604,9 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     
     carn_flag : bool, optional (default = False)
         Flag indicating whether the simulation should include a modification to the iKr current based on the 'carn' condition.
+        
+    apex : bool, optional (default = False)
+        Flag indicating whether the simulation should isimulate the apex (True) or basal (False) region with respect to IKs scaling.
     
     Returns:
     -------
@@ -632,6 +635,11 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     # Set the parameters.
     for i in range(len(x)):
         sim.set_constant(f"ikr.p{i+1}", x[i])
+        
+    if apex is True:
+        sim.set_constant('iks.AB_iks', 1.5)
+    else:
+        sim.set_constant('iks.AB_iks', 1)
     
     if mt_flag is False:
         if carn_flag is False: 
@@ -646,7 +654,7 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
             sim.set_constant('ik1.ik1_carn', 2)
         else: 
             sim.set_constant('iks.iks_scalar', 0.88)
-            sim.set_constant('ik1.ik1_scalar', 1) # MT + L-carn
+            sim.set_constant('ik1.ik1_carn', 1) # MT + L-carn
     
     # Pre-pace the model.
     sim.pre(prepace * bcl)
@@ -663,21 +671,21 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False):
     
     return dict(data = data, apd = apd, duration = duration, ikr = ikr)
 
-# Generate action potentials for each cell type
-wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True)
-Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True)
+# Generate action potentials for each cell type at the base
+wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
+Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
+sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
+Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
 
-wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True)
-Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True)
+wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
+Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
+sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
+Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
 
-wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False)
-sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True)
-Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True)
+wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
+Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
+sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
+Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
 
 # Set up the figure with 3 rows and 2 columns
 fig, axs = plt.subplots(3, 2, figsize=(12, 18))
@@ -688,7 +696,7 @@ axs[0, 0].plot(Lcarn_wt_ap_endo['data']['engine.time'], Lcarn_wt_ap_endo['data']
 axs[0, 0].legend()
 axs[0, 0].set_ylabel('Membrane potential [mV]')
 axs[0, 0].set_xlabel('Time [ms]')
-axs[0, 0].set_title('WT Loewe model (Endo)')
+axs[0, 0].set_title('WT Loewe model (Endo, Base)')
 axs[0, 0].set_xlim([0, 500])
 
 axs[0, 1].plot(sqt_ap_endo['data']['engine.time'], sqt_ap_endo['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_endo['duration']} ms")
@@ -696,7 +704,7 @@ axs[0, 1].plot(Lcarn_sqt_ap_endo['data']['engine.time'], Lcarn_sqt_ap_endo['data
 axs[0, 1].legend()
 axs[0, 1].set_ylabel('Membrane potential [mV]')
 axs[0, 1].set_xlabel('Time [ms]')
-axs[0, 1].set_title('SQT1 Loewe model (Endo)')
+axs[0, 1].set_title('SQT1 Loewe model (Endo, Base)')
 axs[0, 1].set_xlim([0, 500])
 
 # Plot the results for epi
@@ -705,7 +713,7 @@ axs[1, 0].plot(Lcarn_wt_ap_epi['data']['engine.time'], Lcarn_wt_ap_epi['data']['
 axs[1, 0].legend()
 axs[1, 0].set_ylabel('Membrane potential [mV]')
 axs[1, 0].set_xlabel('Time [ms]')
-axs[1, 0].set_title('WT Loewe model (Epi)')
+axs[1, 0].set_title('WT Loewe model (Epi, Base)')
 axs[1, 0].set_xlim([0, 500])
 
 axs[1, 1].plot(sqt_ap_epi['data']['engine.time'], sqt_ap_epi['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_epi['duration']} ms")
@@ -713,7 +721,7 @@ axs[1, 1].plot(Lcarn_sqt_ap_epi['data']['engine.time'], Lcarn_sqt_ap_epi['data']
 axs[1, 1].legend()
 axs[1, 1].set_ylabel('Membrane potential [mV]')
 axs[1, 1].set_xlabel('Time [ms]')
-axs[1, 1].set_title('SQT1 Loewe model (Epi)')
+axs[1, 1].set_title('SQT1 Loewe model (Epi, Base)')
 axs[1, 1].set_xlim([0, 500])
 
 # Plot the results for mid
@@ -722,7 +730,7 @@ axs[2, 0].plot(Lcarn_wt_ap_mid['data']['engine.time'], Lcarn_wt_ap_mid['data']['
 axs[2, 0].legend()
 axs[2, 0].set_ylabel('Membrane potential [mV]')
 axs[2, 0].set_xlabel('Time [ms]')
-axs[2, 0].set_title('WT Loewe model (Mid)')
+axs[2, 0].set_title('WT Loewe model (Mid, Base)')
 axs[2, 0].set_xlim([0, 500])
 
 axs[2, 1].plot(sqt_ap_mid['data']['engine.time'], sqt_ap_mid['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_mid['duration']} ms")
@@ -730,7 +738,7 @@ axs[2, 1].plot(Lcarn_sqt_ap_mid['data']['engine.time'], Lcarn_sqt_ap_mid['data']
 axs[2, 1].legend()
 axs[2, 1].set_ylabel('Membrane potential [mV]')
 axs[2, 1].set_xlabel('Time [ms]')
-axs[2, 1].set_title('SQT1 Loewe model (Mid)')
+axs[2, 1].set_title('SQT1 Loewe model (Mid, Base)')
 axs[2, 1].set_xlim([0, 500])
 
 # Adjust layout for better spacing
@@ -752,6 +760,80 @@ export_dict_to_csv_AP(Lcarn_wt_ap_mid, base_filename = 'AP_WTCarn_mid')
 export_dict_to_csv_AP(sqt_ap_mid, base_filename = 'AP_MT_mid')
 export_dict_to_csv_AP(Lcarn_sqt_ap_mid, base_filename = 'AP_MTCarn_mid')
 
+# Repeat these simulation for the apex.
+wt_ap_endo_A = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = True)
+Lcarn_wt_ap_endo_A = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = True)
+sqt_ap_endo_A = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = True)
+Lcarn_sqt_ap_endo_A = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = True)
+
+wt_ap_epi_A = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = True)
+Lcarn_wt_ap_epi_A = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = True)
+sqt_ap_epi_A = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = True)
+Lcarn_sqt_ap_epi_A = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = True)
+
+wt_ap_mid_A = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = True)
+Lcarn_wt_ap_mid_A = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = True)
+sqt_ap_mid_A = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = True)
+Lcarn_sqt_ap_mid_A = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = True)
+
+# Set up the figure with 3 rows and 2 columns
+fig, axs = plt.subplots(3, 2, figsize=(12, 18))
+
+# Plot the results for endo
+axs[0, 0].plot(wt_ap_endo_A['data']['engine.time'], wt_ap_endo_A['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {wt_ap_endo_A['duration']} ms")
+axs[0, 0].plot(Lcarn_wt_ap_endo_A['data']['engine.time'], Lcarn_wt_ap_endo_A['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_wt_ap_endo_A['duration']} ms")
+axs[0, 0].legend()
+axs[0, 0].set_ylabel('Membrane potential [mV]')
+axs[0, 0].set_xlabel('Time [ms]')
+axs[0, 0].set_title('WT Loewe model (Endo, Apex)')
+axs[0, 0].set_xlim([0, 500])
+
+axs[0, 1].plot(sqt_ap_endo_A['data']['engine.time'], sqt_ap_endo_A['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_endo_A['duration']} ms")
+axs[0, 1].plot(Lcarn_sqt_ap_endo_A['data']['engine.time'], Lcarn_sqt_ap_endo_A['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_sqt_ap_endo_A['duration']} ms")
+axs[0, 1].legend()
+axs[0, 1].set_ylabel('Membrane potential [mV]')
+axs[0, 1].set_xlabel('Time [ms]')
+axs[0, 1].set_title('SQT1 Loewe model (Endo, Apex)')
+axs[0, 1].set_xlim([0, 500])
+
+# Plot the results for epi
+axs[1, 0].plot(wt_ap_epi_A['data']['engine.time'], wt_ap_epi_A['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {wt_ap_epi_A['duration']} ms")
+axs[1, 0].plot(Lcarn_wt_ap_epi_A['data']['engine.time'], Lcarn_wt_ap_epi_A['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_wt_ap_epi_A['duration']} ms")
+axs[1, 0].legend()
+axs[1, 0].set_ylabel('Membrane potential [mV]')
+axs[1, 0].set_xlabel('Time [ms]')
+axs[1, 0].set_title('WT Loewe model (Epi, Apex)')
+axs[1, 0].set_xlim([0, 500])
+
+axs[1, 1].plot(sqt_ap_epi_A['data']['engine.time'], sqt_ap_epi_A['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_epi_A['duration']} ms")
+axs[1, 1].plot(Lcarn_sqt_ap_epi_A['data']['engine.time'], Lcarn_sqt_ap_epi_A['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_sqt_ap_epi_A['duration']} ms")
+axs[1, 1].legend()
+axs[1, 1].set_ylabel('Membrane potential [mV]')
+axs[1, 1].set_xlabel('Time [ms]')
+axs[1, 1].set_title('SQT1 Loewe model (Epi, Apex)')
+axs[1, 1].set_xlim([0, 500])
+
+# Plot the results for mid
+axs[2, 0].plot(wt_ap_mid_A['data']['engine.time'], wt_ap_mid_A['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {wt_ap_mid_A['duration']} ms")
+axs[2, 0].plot(Lcarn_wt_ap_mid_A['data']['engine.time'], Lcarn_wt_ap_mid_A['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_wt_ap_mid_A['duration']} ms")
+axs[2, 0].legend()
+axs[2, 0].set_ylabel('Membrane potential [mV]')
+axs[2, 0].set_xlabel('Time [ms]')
+axs[2, 0].set_title('WT Loewe model (Mid, Apex)')
+axs[2, 0].set_xlim([0, 500])
+
+axs[2, 1].plot(sqt_ap_mid_A['data']['engine.time'], sqt_ap_mid_A['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_mid_A['duration']} ms")
+axs[2, 1].plot(Lcarn_sqt_ap_mid_A['data']['engine.time'], Lcarn_sqt_ap_mid_A['data']['membrane.V'], 'r', label=f"With L-carnitine, APD = {Lcarn_sqt_ap_mid_A['duration']} ms")
+axs[2, 1].legend()
+axs[2, 1].set_ylabel('Membrane potential [mV]')
+axs[2, 1].set_xlabel('Time [ms]')
+axs[2, 1].set_title('SQT1 Loewe model (Mid, Apex)')
+axs[2, 1].set_xlim([0, 500])
+
+# Tidy the layout.
+plt.tight_layout()
+
+#%% Relative changes in APD for each cell type
 # Obtain the relative changes in apd for each of the celltypes. 
 rel_apd_endo = relative_apd(wt = wt_ap_endo, mt = sqt_ap_endo, 
                       carn_wt = Lcarn_wt_ap_endo, carn_mt = Lcarn_sqt_ap_endo)
@@ -961,10 +1043,7 @@ axs[1].set_xlim([0, 500])
 # Tidy up the plots.
 plt.tight_layout()
 
-#%% IKr, IKs, Ik1 sensitivity analysis
-#ik1 wt = 0.81
-#ik1 sqt1 = 0.87
-# Show results w/o IKr scaling (161 ms)
+#%% IKr, IKs, IK1 sensitivity analysis
 
 # Load the model.
 m = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
@@ -1149,149 +1228,9 @@ axs[1].set_ylabel('Membrane potential (mV)')
 
 # Tidy up the plot.
 plt.tight_layout()
-#%% prepace function
+#%% Prepace function
 
-# Add IK1 scaling as well. 
-def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False):
-    """
-    Pre-pace simulation and data storage.
-    
-    This function performs pre-pacing simulation using a given model and pacing protocol. The simulation is performed to achieve steady-state before the main pacing simulation. The results from the pre-pacing simulation are saved, and the state data can be used as the initial state for subsequent pacing simulations.
-    
-    First, cellular pre-pacing is performed, after which 2D tissue pre-pacing is performed. 
-    
-    Parameters:
-    ----------
-    n : int
-        The number of cells in the 2D simulation grid.
-    
-    t : int
-        The initial pacing time in milliseconds (ms).
-    
-    dur : int
-        The duration of the pre-pacing simulation in milliseconds (ms).
-    
-    conduct : float
-        The cell-cell conductance in the 2D simulation.
-    
-    carn_list : list of float
-        List of parameter values for the iKr (rapid delayed rectifier potassium current) model components when L-carnitine treatment is applied.
-    
-    interval : float
-        The time interval between logged data points during the pre-pacing simulation in milliseconds (ms).
-    
-    pp : int
-        The pre-pacing duration in milliseconds (ms) to reach steady-state.
-    
-    WT : bool, optional (default = False)
-        Flag indicating whether to simulate the pre-pacing for WT (Wild Type) condition.
-    
-    carn : bool, optional (default = False)
-        Flag indicating whether to simulate the pre-pacing with L-carnitine treatment.
-    
-    Returns:
-    -------
-    dict
-        A dictionary containing the following elements:
-        - 'state': The state data obtained after the pre-pacing simulation, which can be used as the initial state for subsequent pacing simulations.
-        - 'pre': The logged data during the pre-pacing simulation, including time and membrane potential (V).
-        - 'block': The 2D simulation block containing the membrane potential (V) data for all cells in the grid.
-    
-    Note:
-    -----
-    - The function uses the 'pre_pace' to simulate pre-pacing and save the results for further analysis.
-    - The function uses the 'model' and 'prot' objects, which should be set up before calling this function.
-    - The 'conduct' parameter represents cell-cell conductance in the 2D simulation, which influences the electrical coupling between cells.
-    - The 'carn_list' parameter contains the parameter values for the iKr model when L-carnitine treatment is applied.
-    - The 'interval' parameter specifies the time interval between logged data points during the pre-pacing simulation.
-    - Use 'WT=True' to simulate pre-pacing for the Wild Type condition.
-    - Use 'carn=True' to simulate pre-pacing with L-carnitine treatment.
-    - The results from the pre-pacing simulation can be saved in numpy files for further analysis and visualization.
-    - The function returns a dictionary containing the logged data, state data, and 2D simulation block for analysis and visualization.
-    """
-
-    
-    # Load the model and set the input parameters.
-    model = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
-    model.set_value('cell.mode', 0)
-    
-    # Initialize the default parameters
-    default_sqt = [0.029412, -38.65, 19.46, 16.49, 6.76, 0.0003, 14.1, -5, -3.3328, 5.1237, 2]
-    default_wt = [0.029412, 15, 22.4, 14.1, 6.5, 0.0003, 14.1, -5, -3.3328, 5.1237, 1]
-    
-    # Initialize a protocol.
-    prot = myokit.Protocol()
-    
-    # Set the bcl to 1000 ms.
-    bcl = 1000
-    
-    hz = 1/(bcl/1000)
-    
-    # create an event schedule.
-    prot.schedule(1, 20, 0.5, bcl, 0 )
-  
-    # Create a simulation object.
-    sim_pre = myokit.Simulation(model, prot)
-    
-    # Pre-pace the model to steady state.
-    sim_pre.pre(pp)
-    
-    # Save the pre-paced states.
-    pre_state = sim_pre.state() 
-        
-    # Create a pacing protocol.
-    p = myokit.pacing.blocktrain(t, 1, 0, 1, 0)
-    s = myokit.SimulationOpenCL(model, p, ncells = [n, n])
-    s.set_paced_cells(3, n, 0, 0)
-    s.set_conductance(conduct, conduct)
-    s.set_step_size(0.01)
-    s.set_state(pre_state) 
-   
-    # Conditional flags
-    if not WT and carn:
-        for i in range(len(carn_list)):
-            s.set_constant(f'ikr.p{i+1}', carn_list[i])
-        s.set_constant('iks.iks_scalar', 0.88) # SQT1 + L-carn
-        s.set_constant('ik1.ik1_carn', 1) # SQT1 + L-carn
-    
-    elif not WT and not carn:
-        for i in range(len(default_sqt)):
-            s.set_constant(f'ikr.p{i+1}', default_sqt[i])
-        s.set_constant('iks.iks_scalar', 1.35) # SQT1
-        s.set_constant('ik1.ik1_carn', 2) # No L-Carn
-        
-    elif WT and not carn:
-        for i in range(len(default_wt)):
-            s.set_constant(f'ikr.p{i+1}', default_wt[i])
-        s.set_constant('iks.iks_scalar', 1) # WT
-        s.set_constant('ik1.ik1_carn', 2) # No L-Carn
-            
-
-    # Generate the first depolarization.
-    pre = s.run(dur, log = ['engine.time', 'membrane.V'], log_interval = interval)
-    state = s.state()
-    block = pre.block2d()
-    
-    # Save the list with nympy.
-    if WT is True:
-        if carn is True: 
-            np.save(f'pre_pace{pp}_WT_carn_{dur}_cell_{n}_iks_{hz}Hz.npy', state)
-            block.save(f'2D_sim_WT_carn_pre{pp}_cell_{n}_iks_{hz}Hz.zip')
-        else: 
-            np.save(f'pre_pace_{pp}WT_{dur}_cell_{n}_iks_{hz}Hz.npy', state)  
-            block.save(f"2D_sim_WT_pre{pp}_cell_{n}_iks_{hz}Hz.zip")  
-    else:
-        if carn is True: 
-            np.save(f'pre_pace{pp}_MT_carn_{dur}_cell_{n}_iks_{hz}Hz.npy', state)
-            block.save(f"2D_sim_MT_carn_pre{pp}_cell_{n}_iks_{hz}Hz.zip")
-        else: 
-            np.save(f'pre_pace{pp}_MT_new{dur}_cell_{n}_iks_{hz}Hz.npy', state)
-            block.save(f"2D_sim_MT_newpre{pp}_cell_{n}_iks_{hz}Hz.zip")
-      
-    return(dict(state = state, pre = pre, block = block))
-
-
-def pre_pace2(n, t, dur, conduct, carn_list, interval, pp, WT=False, carn=False):
+def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False, apex = False):
     """
     Pre-pace simulation and data storage.
 
@@ -1327,6 +1266,10 @@ def pre_pace2(n, t, dur, conduct, carn_list, interval, pp, WT=False, carn=False)
 
     carn : bool, optional (default = False)
         Flag indicating whether to simulate the pre-pacing with L-carnitine treatment.
+        
+    apex : bool, optional (default = False)
+        Flag indicating whether the simulation should isimulate the apex (True) or basal (False) region with respect to IKs scaling.
+        
 
     Returns:
     -------
@@ -1393,6 +1336,12 @@ def pre_pace2(n, t, dur, conduct, carn_list, interval, pp, WT=False, carn=False)
         s.set_constant(f'ikr.p{i + 1}', param_value)
     s.set_constant('iks.iks_scalar', iks_scalar_value)
     s.set_constant('ik1.ik1_carn', ik1_carn_value)
+    
+    # Select apex or basal region
+    if apex:
+        s.set_constant('iks.AB_iks', 1.5)
+    else:
+        s.set_constant('iks.AB_iks', 1)
 
     # Generate the first depolarization.
     pre = s.run(dur, log=['engine.time', 'membrane.V'], log_interval=interval)
@@ -1402,8 +1351,9 @@ def pre_pace2(n, t, dur, conduct, carn_list, interval, pp, WT=False, carn=False)
     # Save the list with numpy.
     condition_str = 'WT' if WT else 'MT'
     carn_str = '_carn' if carn else ''
-    np.save(f'pre_pace{pp}_{condition_str}{carn_str}_{dur}_cell_{n}_iks_{hz}Hz_v2.npy', state)
-    block.save(f'2D_sim_{condition_str}{carn_str}_pre{pp}_cell_{n}_iks_{hz}Hz_v2.zip')
+    basal_str = 'apex' if apex else 'basal'
+    np.save(f'pre_pace{pp}_{condition_str}{carn_str}_{dur}_cell_{n}_iks_{hz}Hz_{basal_str}.npy', state)
+    block.save(f'2D_sim_{condition_str}{carn_str}_pre{pp}_cell_{n}_iks_{hz}Hz_{basal_str}.zip')
 
     return {'state': state, 'pre': pre, 'block': block}
 
@@ -1412,15 +1362,15 @@ WT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5
 MT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
 MT_carn_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
 
-# Revision work on larger tissue (9 x 9 cm)
-WT_pp_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False)
-MT_pp_pace_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
-MT_carn_pp_large = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
+# Revision work on larger basal endocardial tissue (9 x 9 cm)
+WT_pp_large_B = pre_pace(n = 600, t = 10000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False, apex = False)
+MT_pp_pace_large_B = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False, apex = False)
+MT_carn_pp_large_B = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True, apex = False)
 
-# New function 
-WT_pp_large2 = pre_pace2(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False)
-MT_pp_pace_large2 = pre_pace2(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
-MT_carn_pp_large2 = pre_pace2(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
+# Larger apical endocardial tissue (9 x 9 cm)
+WT_pp_large_A = pre_pace(n = 600, t = 10000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False, apex = True)
+MT_pp_pace_large_A = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False, apex = True)
+MT_carn_pp_large_A = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True, apex = True)
 
 #%%  MT reentry function.
 

@@ -569,10 +569,15 @@ KsCa = 1 + 0.6 / (1.0 + (3.8e-5 / calcium.Cai)^1.4)
 GKs = if(cell.mode == 1, 1.4 * base, base)
     base = 0.0034
     desc: Conductivity adjustment for cell type
-IKs = iks_scalar *(GKs * KsCa * x1 * x2 * (V - nernst.EKs))
+IKs = AB_iks * iks_scalar * (GKs * KsCa * x1 * x2 * (V - nernst.EKs))
     desc: Slow delayed rectifier Potassium current
+
 # IKs is scaled according to the condtions. WT = 1, WT + L-carn = 0.75, MT = 1.35 (Gain-of-function), MT + L-carn = 0.88 (1.35 * 0.65)
 iks_scalar = 1.0
+
+# Based on Sung et al. (2021) doi: 10.3389/fphys.2021.740389, Bayer et al. (2016) doi: 10.1016/j.hrthm.2016.05.017, and Keller et al. (2012) doi: 10.1109/TBME.2011.2168397.
+# The apex-basal gradient is simulated by scaling IKs (Apex is 1.5 scaling and basal is 1.0).
+AB_iks = 1
 
 
 #
