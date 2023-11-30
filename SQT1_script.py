@@ -31,7 +31,7 @@ for f in files:
     print(f)
 
 # Load the functions.
-from SQT1_functions import export_dict_to_csv, export_dict_to_csv_AP, export_df_to_csv, calculate_reentry_time, relative_apd
+from SQT1_functions import export_dict_to_csv, export_dict_to_csv_AP, export_df_to_csv, calculate_reentry_time, relative_apd, custom_matrix
 
 # Load the initial SQT1 parameters from the model.
 x_default_sqt = [0.029412, -38.65, 19.46, 16.49, 6.76, 0.0003, 14.1, -5, -3.3328, 5.1237, 2]
@@ -575,7 +575,7 @@ bcl = 1000
 pace.schedule(1, 20, 0.5, bcl)
 
 
-def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = False):
+def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 2):
     """
     Action potential effects
     
@@ -605,9 +605,9 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     carn_flag : bool, optional (default = False)
         Flag indicating whether the simulation should include a modification to the iKr current based on the 'carn' condition.
         
-    apex : bool, optional (default = False)
-        Flag indicating whether the simulation should isimulate the apex (True) or basal (False) region with respect to IKs scaling.
-    
+    apex : int
+        Flag indicating whether the simulation should consider the base (0), mid (1) or apex (2) region. 
+        
     Returns:
     -------
     dict
@@ -635,12 +635,19 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     # Set the parameters.
     for i in range(len(x)):
         sim.set_constant(f"ikr.p{i+1}", x[i])
-        
-    if apex is True:
-        sim.set_constant('iks.AB_iks', 1.5)
-    else:
-        sim.set_constant('iks.AB_iks', 1)
     
+    # Set the AB gradient
+    if apex == 0:
+        sim.set_constant('ikb.ikb_scalar', 0.25)
+        sim.set_constant('iks.AB_iks', 1) #0.1 is 20%
+    elif apex == 1:
+        sim.set_constant('ikb.ikb_scalar', 1)
+        sim.set_constant('iks.AB_iks', 1)
+    else:
+        sim.set_constant('ikb.ikb_scalar', 2.25)
+        sim.set_constant('iks.AB_iks', 1)
+     
+    # Conditional statements w/r MT and L-Carnitine treatment.     
     if mt_flag is False:
         if carn_flag is False: 
             sim.set_constant('iks.iks_scalar', 1)
@@ -833,6 +840,24 @@ axs[2, 1].set_xlim([0, 500])
 # Tidy the layout.
 plt.tight_layout()
 
+#%% Optimize the IKb to get a 20% difference 
+wt_ap_endo_mid = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+wt_ap_endo_base = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 0)
+wt_ap_endo_apex = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 2)
+
+# calculate the ratios
+mid_base = np.round(wt_ap_endo_base['duration']/wt_ap_endo_mid['duration'], 2)
+mid_apex = np.round(wt_ap_endo_apex['duration']/wt_ap_endo_mid['duration'], 2)
+
+# Plot the apds
+plt.figure()
+plt.plot(wt_ap_endo_mid['data']['engine.time'], wt_ap_endo_mid['data']['membrane.V'], 'k', label = f"Mid, APD90 = {wt_ap_endo_mid['duration']} ms")
+plt.plot(wt_ap_endo_base['data']['engine.time'], wt_ap_endo_base['data']['membrane.V'], 'r', label = f"Base, APD90 = {wt_ap_endo_base['duration']} ms")
+plt.plot(wt_ap_endo_apex['data']['engine.time'], wt_ap_endo_apex['data']['membrane.V'], 'b', label = f"Apex, APD90 = {wt_ap_endo_apex['duration']} ms")
+plt.legend()
+plt.xlabel('Time [ms]')
+plt.ylabel('Membrane potential (mV)')
+plt.title('Endocardial tissue')
 #%% Relative changes in APD for each cell type
 # Obtain the relative changes in apd for each of the celltypes. 
 rel_apd_endo = relative_apd(wt = wt_ap_endo, mt = sqt_ap_endo, 
@@ -1230,7 +1255,7 @@ axs[1].set_ylabel('Membrane potential (mV)')
 plt.tight_layout()
 #%% Prepace function
 
-def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False, apex = False):
+def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False, AB = False):
     """
     Pre-pace simulation and data storage.
 
@@ -1267,8 +1292,8 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
     carn : bool, optional (default = False)
         Flag indicating whether to simulate the pre-pacing with L-carnitine treatment.
         
-    apex : bool, optional (default = False)
-        Flag indicating whether the simulation should isimulate the apex (True) or basal (False) region with respect to IKs scaling.
+    AB : bool, optional (default = False)
+        Flag indicating whether the simulation should simulate the apex (True) or basal (False) gradient.
         
 
     Returns:
@@ -1279,6 +1304,20 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
         - 'pre': The logged data during the pre-pacing simulation, including time and membrane potential (V).
         - 'block': The 2D simulation block containing the membrane potential (V) data for all cells in the grid.
     """
+
+    # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
+    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
+    # from 10% from base to apex. 
+    
+    # Define the parameters for the AB gradient.
+    initial_value = 0.25
+    middle_value = 1.0
+    final_value = 2.25
+    stepsize_initial = (middle_value - initial_value) / (n // 2)
+    stepsize_final = (final_value - middle_value) / (n // 2)
+    
+    # Create the matrix.
+    mat = custom_matrix(n, initial_value, middle_value, final_value, stepsize_initial, stepsize_final, lin_int = False)
 
     # Load the model and set the input parameters.
     model = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
@@ -1315,6 +1354,10 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
     s.set_conductance(conduct, conduct)
     s.set_step_size(0.01)
     s.set_state(pre_state)
+    
+    # Set the AB gradient.
+    if AB is True:
+        s.set_field('ikb.ikb_scalar', mat)
 
     # Conditional flags
     if not WT:
@@ -1336,12 +1379,6 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
         s.set_constant(f'ikr.p{i + 1}', param_value)
     s.set_constant('iks.iks_scalar', iks_scalar_value)
     s.set_constant('ik1.ik1_carn', ik1_carn_value)
-    
-    # Select apex or basal region
-    if apex:
-        s.set_constant('iks.AB_iks', 1.5)
-    else:
-        s.set_constant('iks.AB_iks', 1)
 
     # Generate the first depolarization.
     pre = s.run(dur, log=['engine.time', 'membrane.V'], log_interval=interval)
@@ -1351,9 +1388,9 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
     # Save the list with numpy.
     condition_str = 'WT' if WT else 'MT'
     carn_str = '_carn' if carn else ''
-    basal_str = 'apex' if apex else 'basal'
-    np.save(f'pre_pace{pp}_{condition_str}{carn_str}_{dur}_cell_{n}_iks_{hz}Hz_{basal_str}.npy', state)
-    block.save(f'2D_sim_{condition_str}{carn_str}_pre{pp}_cell_{n}_iks_{hz}Hz_{basal_str}.zip')
+    AB_str = 'AB' if AB else 'Mid'
+    np.save(f'pre_pace{pp}_{condition_str}{carn_str}_{dur}_cell_{n}_{hz}Hz_{AB_str}.npy', state)
+    block.save(f'2D_sim_{condition_str}{carn_str}_pre{pp}_cell_{n}_{hz}Hz_{AB_str}.zip')
 
     return {'state': state, 'pre': pre, 'block': block}
 
@@ -1362,15 +1399,10 @@ WT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5
 MT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False)
 MT_carn_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
 
-# Revision work on larger basal endocardial tissue (9 x 9 cm)
-WT_pp_large_B = pre_pace(n = 600, t = 10000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False, apex = False)
-MT_pp_pace_large_B = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False, apex = False)
-MT_carn_pp_large_B = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True, apex = False)
-
-# Larger apical endocardial tissue (9 x 9 cm)
-WT_pp_large_A = pre_pace(n = 600, t = 10000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False, apex = True)
-MT_pp_pace_large_A = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False, apex = True)
-MT_carn_pp_large_A = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True, apex = True)
+# Larger endocardial tissue (9 x 9 cm) with AB gradient.
+WT_pp_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False, AB = True)
+MT_pp_pace_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False, AB = True)
+MT_carn_pp_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True, AB = True)
 
 #%%  MT reentry function.
 
@@ -1421,7 +1453,27 @@ def vulnerability_window_MT(inputs):
     pp = 2000000
     WT = False
     carn = False
+    AB = True
     
+    # Define some conditional strings.
+    condition_str = 'WT' if WT else 'MT'
+    carn_str = '_carn' if carn else ''
+    AB_str = 'AB' if AB else 'Mid'
+    
+    # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
+    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
+    # from 10% from base to apex. 
+    
+    # Define the parameters for the AB gradient.
+    initial_value = 0.25
+    middle_value = 1.0
+    final_value = 2.25
+    stepsize_initial = (middle_value - initial_value) / (n // 2)
+    stepsize_final = (final_value - middle_value) / (n // 2)
+    
+    # Create the matrix.
+    mat = custom_matrix(n, initial_value, middle_value, final_value, stepsize_initial, stepsize_final, lin_int = False)
+
     # Initialize the model.
     model = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
     model.set_value('cell.mode', 0)
@@ -1440,22 +1492,33 @@ def vulnerability_window_MT(inputs):
     s.set_conductance(conduct, conduct)
     s.set_step_size(0.01)
     
-    if not WT: 
-        param_list = default_sqt
+    # Set the AB gradient.
+    if AB is True:
+        s.set_field('ikb.ikb_scalar', mat)
+
+    # Conditional flags
+    if not WT:
+        if carn:
+            param_list = carn_list
+            iks_scalar_value = 0.88
+            ik1_carn_value = 1
+        else:
+            param_list = default_sqt
+            iks_scalar_value = 1.35
+            ik1_carn_value = 2
     else:
         param_list = default_wt
-    
-    if carn:
-        param_list = carn_list
-    
-    for i in range(len(param_list)):
-        s.set_constant(f'ikr.p{i+1}', param_list[i])
-    
-    # Set IKs.
-    s.set_constant('iks.iks_scalar', 1.35)
-    
+        iks_scalar_value = 1
+        ik1_carn_value = 2
+
+    # Set constants based on conditional flags
+    for i, param_value in enumerate(param_list):
+        s.set_constant(f'ikr.p{i + 1}', param_value)
+    s.set_constant('iks.iks_scalar', iks_scalar_value)
+    s.set_constant('ik1.ik1_carn', ik1_carn_value)
+
     # Load the pre-pacing state.
-    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_600_iks_1.0Hz.npy')
+    pre_pace = np.load(f'pre_pace2000000_{condition_str}{carn_str}_10000_cell_{n}_1.0Hz_{AB_str}.npy')
     s.set_state(pre_pace)
     
     # Run the model for the S1.
@@ -1476,31 +1539,12 @@ def vulnerability_window_MT(inputs):
         if maxval < -50:
             print('no more activity detected')
             break
-        
-        # Save the results as .zips to be loaded in the block viewer.
-        if WT:
-            if carn: 
-                block.save(f'2D_sim_WT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip')
-            else: 
-                block.save(f"2D_sim_WT_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")    
-        else:
-            if carn: 
-                block.save(f"2D_sim_MT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")
-            else: 
-                block.save(f"2D_sim_MT_cell_{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")
+
+        block.save(f'2D_sim_{condition_str}{carn_str}_cell{inputs}_{n}_cond{conduct}_PP{pp}_{hz}Hz_{AB_str}.zip')
     
     # Calculate the reentry time based on a threshold of -80 mV.
-    reentry_time = calculate_reentry_time(i=i, vm=vm, dur_sim=dur_sim, dur=dur, s2=inputs, interval=interval, cutoff=-80)  
-    if WT:
-        if carn: 
-            np.save(f'WT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy', reentry_time)
-        else: 
-            np.save(f"WT_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)    
-    else:
-        if carn: 
-            np.save(f"MT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)
-        else: 
-            np.save(f"MT_cell_{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)
+    reentry_time = calculate_reentry_time(i=i, vm=vm, dur_sim=dur_sim, dur=dur, s2=inputs, interval=interval, cutoff = -80)  
+    np.save(f'{condition_str}{carn_str}_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_{hz}Hz_{AB_str}.npy', reentry_time)
 
     return dict(log=log, block=block, time=reentry_time)
 
@@ -1553,7 +1597,27 @@ def vulnerability_window_WT(inputs):
     pp = 2000000
     WT = True
     carn = False
+    AB = True
     
+    # Define some conditional strings.
+    condition_str = 'WT' if WT else 'MT'
+    carn_str = '_carn' if carn else ''
+    AB_str = 'AB' if AB else 'Mid'
+    
+    # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
+    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
+    # from 10% from base to apex. 
+    
+    # Define the parameters for the AB gradient.
+    initial_value = 0.25
+    middle_value = 1.0
+    final_value = 2.25
+    stepsize_initial = (middle_value - initial_value) / (n // 2)
+    stepsize_final = (final_value - middle_value) / (n // 2)
+    
+    # Create the matrix.
+    mat = custom_matrix(n, initial_value, middle_value, final_value, stepsize_initial, stepsize_final, lin_int = False)
+
     # Initialize the model.
     model = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
     model.set_value('cell.mode', 0)
@@ -1572,22 +1636,33 @@ def vulnerability_window_WT(inputs):
     s.set_conductance(conduct, conduct)
     s.set_step_size(0.01)
     
-    if not WT: 
-        param_list = default_sqt
+    # Set the AB gradient.
+    if AB is True:
+        s.set_field('ikb.ikb_scalar', mat)
+
+    # Conditional flags
+    if not WT:
+        if carn:
+            param_list = carn_list
+            iks_scalar_value = 0.88
+            ik1_carn_value = 1
+        else:
+            param_list = default_sqt
+            iks_scalar_value = 1.35
+            ik1_carn_value = 2
     else:
         param_list = default_wt
-    
-    if carn:
-        param_list = carn_list
-    
-    for i in range(len(param_list)):
-        s.set_constant(f'ikr.p{i+1}', param_list[i])
-    
-    # Set IKs.
-    s.set_constant('iks.iks_scalar', 1.0)
-    
+        iks_scalar_value = 1
+        ik1_carn_value = 2
+
+    # Set constants based on conditional flags
+    for i, param_value in enumerate(param_list):
+        s.set_constant(f'ikr.p{i + 1}', param_value)
+    s.set_constant('iks.iks_scalar', iks_scalar_value)
+    s.set_constant('ik1.ik1_carn', ik1_carn_value)
+
     # Load the pre-pacing state.
-    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_600_iks_1.0Hz.npy')
+    pre_pace = np.load(f'pre_pace2000000_{condition_str}{carn_str}_10000_cell_{n}_1.0Hz_{AB_str}.npy')
     s.set_state(pre_pace)
     
     # Run the model for the S1.
@@ -1608,38 +1683,19 @@ def vulnerability_window_WT(inputs):
         if maxval < -50:
             print('no more activity detected')
             break
-        
-        # Save the results as .zips to be loaded in the block viewer.
-        if WT:
-            if carn: 
-                block.save(f'2D_sim_WT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip')
-            else: 
-                block.save(f"2D_sim_WT_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")    
-        else:
-            if carn: 
-                block.save(f"2D_sim_MT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")
-            else: 
-                block.save(f"2D_sim_MT_cell_{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")
+
+        block.save(f'2D_sim_{condition_str}{carn_str}_cell{inputs}_{n}_cond{conduct}_PP{pp}_{hz}Hz_{AB_str}.zip')
     
     # Calculate the reentry time based on a threshold of -80 mV.
-    reentry_time = calculate_reentry_time(i=i, vm=vm, dur_sim=dur_sim, dur=dur, s2=inputs, interval=interval, cutoff=-80)  
-    if WT:
-        if carn: 
-            np.save(f'WT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy', reentry_time)
-        else: 
-            np.save(f"WT_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)    
-    else:
-        if carn: 
-            np.save(f"MT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)
-        else: 
-            np.save(f"MT_cell_{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)
+    reentry_time = calculate_reentry_time(i=i, vm=vm, dur_sim=dur_sim, dur=dur, s2=inputs, interval=interval, cutoff = -80)  
+    np.save(f'{condition_str}{carn_str}_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_{hz}Hz_{AB_str}.npy', reentry_time)
 
     return dict(log=log, block=block, time=reentry_time)
 
 #%% MT + L-carn reentry
 Lcarn_sqt1 = [0.017787,-48.520307,14.325950,22.303676,6.877993,0.000241,14.842432,-5.368071,-3.843856,4.941128,2.061902]
 
-def vulnerability_window_MT_Carn(inputs):
+def vulnerability_window_MT_Carn1(inputs):
     """Calculate vulnerability window for specific input(s).
 
     This function calculates the vulnerability window for a specific S1S2 input value (or a range of S1S2) by simulating
@@ -1673,7 +1729,7 @@ def vulnerability_window_MT_Carn(inputs):
     Example:
     MT_S1S2 = vulnerability_window_MT([200, 210, 220])
     """
-    
+     
     # Set default parameters.
     n = 600
     t = 1000
@@ -1685,6 +1741,26 @@ def vulnerability_window_MT_Carn(inputs):
     pp = 2000000
     WT = False
     carn = True
+    AB = True
+    
+    # Define some conditional strings.
+    condition_str = 'WT' if WT else 'MT'
+    carn_str = '_carn' if carn else ''
+    AB_str = 'AB' if AB else 'Mid'
+    
+    # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
+    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
+    # from 10% from base to apex. 
+    
+    # Define the parameters for the AB gradient.
+    initial_value = 0.25
+    middle_value = 1.0
+    final_value = 2.25
+    stepsize_initial = (middle_value - initial_value) / (n // 2)
+    stepsize_final = (final_value - middle_value) / (n // 2)
+    
+    # Create the matrix.
+    mat = custom_matrix(n, initial_value, middle_value, final_value, stepsize_initial, stepsize_final, lin_int = False)
     
     # Initialize the model.
     model = myokit.load_model('MMT/ORD_LOEWE_CL_adapt.mmt')
@@ -1704,22 +1780,33 @@ def vulnerability_window_MT_Carn(inputs):
     s.set_conductance(conduct, conduct)
     s.set_step_size(0.01)
     
-    if not WT: 
-        param_list = default_sqt
+    # Set the AB gradient.
+    if AB is True:
+        s.set_field('ikb.ikb_scalar', mat)
+    
+    # Conditional flags
+    if not WT:
+        if carn:
+            param_list = carn_list
+            iks_scalar_value = 0.88
+            ik1_carn_value = 1
+        else:
+            param_list = default_sqt
+            iks_scalar_value = 1.35
+            ik1_carn_value = 2
     else:
         param_list = default_wt
+        iks_scalar_value = 1
+        ik1_carn_value = 2
     
-    if carn:
-        param_list = carn_list
-    
-    for i in range(len(param_list)):
-        s.set_constant(f'ikr.p{i+1}', param_list[i])
-    
-    # Set IKs.
-    s.set_constant('iks.iks_scalar', 0.88)
+    # Set constants based on conditional flags
+    for i, param_value in enumerate(param_list):
+        s.set_constant(f'ikr.p{i + 1}', param_value)
+    s.set_constant('iks.iks_scalar', iks_scalar_value)
+    s.set_constant('ik1.ik1_carn', ik1_carn_value)
     
     # Load the pre-pacing state.
-    pre_pace = np.load('pre_pace2000000_MT_new10000_cell_600_iks_1.0Hz.npy')
+    pre_pace = np.load(f'pre_pace2000000_{condition_str}{carn_str}_10000_cell_{n}_1.0Hz_{AB_str}.npy')
     s.set_state(pre_pace)
     
     # Run the model for the S1.
@@ -1740,32 +1827,13 @@ def vulnerability_window_MT_Carn(inputs):
         if maxval < -50:
             print('no more activity detected')
             break
-        
-        # Save the results as .zips to be loaded in the block viewer.
-        if WT:
-            if carn: 
-                block.save(f'2D_sim_WT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip')
-            else: 
-                block.save(f"2D_sim_WT_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")    
-        else:
-            if carn: 
-                block.save(f"2D_sim_MT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")
-            else: 
-                block.save(f"2D_sim_MT_cell_{inputs}_{n}_cond{conduct}_PP{pp}_iks_{hz}Hz.zip")
+    
+        block.save(f'2D_sim_{condition_str}{carn_str}_cell{inputs}_{n}_cond{conduct}_PP{pp}_{hz}Hz_{AB_str}.zip')
     
     # Calculate the reentry time based on a threshold of -80 mV.
-    reentry_time = calculate_reentry_time(i=i, vm=vm, dur_sim=dur_sim, dur=dur, s2=inputs, interval=interval, cutoff=-80)  
-    if WT:
-        if carn: 
-            np.save(f'WT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy', reentry_time)
-        else: 
-            np.save(f"WT_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)    
-    else:
-        if carn: 
-            np.save(f"MT_carn_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)
-        else: 
-            np.save(f"MT_cell_{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_iks_{hz}Hz.npy", reentry_time)
-
+    reentry_time = calculate_reentry_time(i=i, vm=vm, dur_sim=dur_sim, dur=dur, s2=inputs, interval=interval, cutoff = -80)  
+    np.save(f'{condition_str}{carn_str}_cell{inputs}_{n}_cond{conduct}_PP{pp}_reentrytime_{hz}Hz_{AB_str}.npy', reentry_time)
+    
     return dict(log=log, block=block, time=reentry_time)
 
 #%% Parallelization of the S1S2 simulations to speed it up.
@@ -1796,7 +1864,7 @@ if __name__ == '__main__':
     # Also, save the simulation blocks obtained from each result to a file with a specific naming convention.
     for i, result in enumerate(results):
         final_results.append(result)
-        result['block'].save(f'2D_sim_MT_cell_res{my_list[i]}_400_conduct9_PP{pp}_iks_1Hz.zip')
+        result['block'].save(f'2D_sim_MT_cell_res{my_list[i]}_600_conduct9_PP{pp}_1Hz_AB.zip')
 
     # Close the Pool to prevent any more tasks from being submitted to it.
     pool.close()
@@ -1816,7 +1884,7 @@ if __name__ == '__main__':
     
 #%% Import all the reentry durations.
 
-def reentry_df(reentry_range, WT = True, Carn = False, save = False):
+def reentry_df(reentry_range, WT = True, Carn = False, AB = True, save = False):
 
     """
     Creates a pandas DataFrame from a range of reentry values and specified conditions.
@@ -1836,19 +1904,20 @@ def reentry_df(reentry_range, WT = True, Carn = False, save = False):
     
     # Initialize some conditions. 
     npy_list = []
-    file_format = '{}{}_400_cond9_PP2000000_reentrytime_iks.npy'
+    file_format = '{}{}_600_cond9_PP2000000_reentrytime_iks.npy'
     file_prefix = 'WT' if WT else 'MT'
     file_suffix = '_carn' if Carn else ''
+    file_AB = 'AB' if AB else 'Mid'
  
     # Loop over the reentry values and try to load corresponding files
     for i in reentry_range:
         if WT is False:
             if Carn is False:
-                file_name = file_format.format(file_prefix + file_suffix + '_cell_', i)
+                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell_', i)
             else:
-                file_name = file_format.format(file_prefix + file_suffix + '_cell', i)
+                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
         else:
-            file_name = file_format.format(file_prefix + file_suffix + '_cell', i)
+            file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
         
         try:
             # Load the reentry duration data from the file and add it to the list
@@ -1863,7 +1932,7 @@ def reentry_df(reentry_range, WT = True, Carn = False, save = False):
     
     # If the 'save' flag is True, save the DataFrame to a CSV file
     if save:
-        save_file_name = f"{file_prefix}{file_suffix}_reentrydur_1Hz.csv"
+        save_file_name = f"{file_prefix}{file_suffix}_reentrydur_1Hz_{file_AB}.csv"
         df.to_csv(save_file_name, index=False)
     
     return df
@@ -1875,9 +1944,9 @@ MT_range = np.arange(200, 410, 10)
 MT_Carn_range = np.arange(200, 410, 10)      
 
 # Calculate the reentry durations for each of the S1S2 intervals.
-WT_reentry = reentry_df(WT_range, WT = True, Carn = False, save = True)       
-MT_reentry = reentry_df(MT_range, WT = False, Carn = False, save = True)
-MT_Carn_reentry = reentry_df(MT_Carn_range, WT = False, Carn = True, save = True)
+WT_reentry = reentry_df(WT_range, WT = True, Carn = False, AB = True, save = True)       
+MT_reentry = reentry_df(MT_range, WT = False, Carn = False, AB = True, save = True)
+MT_Carn_reentry = reentry_df(MT_Carn_range, WT = False, Carn = True, AB = True, save = True)
 
 # Alternatively, you can also load the data from the folder. 
 WT_reentrydur = pd.read_csv('Data/WT_reentrydur_1Hz.csv')

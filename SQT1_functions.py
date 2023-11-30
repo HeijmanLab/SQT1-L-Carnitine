@@ -198,3 +198,57 @@ def relative_apd(wt, mt, carn_wt, carn_mt):
     df = pd.DataFrame([rel_apd], columns = ['wt', 'mt', 'nocarn', 'carn'])
     
     return df
+
+def custom_matrix(size, initial_value, middle_value, final_value, stepsize_initial, stepsize_final, lin_int = False):
+    """
+    Create a matrix with interpolated values ranging from `initial_value` to `final_value`.
+
+    Parameters
+    ----------
+    
+    size : int
+        The size of the square matrix.
+    
+    initial_value : float
+        The starting value for the interpolation.
+    
+    middle_value : float
+        The value at the middle row of the matrix.
+    
+    final_value : float
+        The ending value for the interpolation.
+    
+    stepsize_initial : float
+        The step size for the initial part of the matrix.
+    
+    stepsize_final : float
+        The step size for the final part of the matrix.
+    
+    lin_int : bool, optional (Default = False)
+        If True, perform linear interpolation using np.linspace. If False, use a stepwise interpolation.
+
+    Returns
+    -------
+    numpy.ndarray
+        A square matrix with interpolated values.
+    """
+    
+    if lin_int:
+        mat = np.linspace(initial_value, final_value, num = size).reshape(-1, 1)
+        
+        mat = np.tile(mat, (1, size))
+    else:
+        mat = np.zeros((size, size))
+    
+        # Set the first row with initial values
+        mat[0, :] = initial_value
+    
+        # Set values up to the middle row
+        for i in range(1, size // 2):
+            mat[i, :] = mat[i - 1, :] + stepsize_initial
+    
+        # Set values from the middle row to the last row
+        for i in range(size // 2, size):
+            mat[i, :] = mat[i - 1, :] + stepsize_final
+
+    return mat

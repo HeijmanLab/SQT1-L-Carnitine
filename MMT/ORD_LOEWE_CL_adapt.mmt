@@ -788,9 +788,10 @@ INaK = Pnak * (JnakNa + JnakK)
 use membrane.V
 xkb = 1 / (1 + exp((V - 14.48) / -18.34))
 GKb = if(cell.mode == 1, 0.0018, 0.003)
-IKb = GKb * xkb * (V - nernst.EK)
+IKb = ikb_scalar * GKb * xkb * (V - nernst.EK)
     desc: Background Potassium current
     in [uA/uF]
+ikb_scalar = 1
 
 #
 # INab :: Background Sodium current
