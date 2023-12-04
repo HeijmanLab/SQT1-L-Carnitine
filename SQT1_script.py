@@ -639,7 +639,7 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     # Set the AB gradient
     if apex == 0:
         sim.set_constant('ikb.ikb_scalar', 0.25)
-        sim.set_constant('iks.AB_iks', 1) #0.1 is 20%
+        sim.set_constant('iks.AB_iks', 1) 
     elif apex == 1:
         sim.set_constant('ikb.ikb_scalar', 1)
         sim.set_constant('iks.AB_iks', 1)
@@ -840,7 +840,7 @@ axs[2, 1].set_xlim([0, 500])
 # Tidy the layout.
 plt.tight_layout()
 
-#%% Optimize the IKb to get a 20% difference 
+#%% Optimize the IKb to get a 10% difference 
 wt_ap_endo_mid = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
 wt_ap_endo_base = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 0)
 wt_ap_endo_apex = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 2)
