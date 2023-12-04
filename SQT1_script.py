@@ -1306,8 +1306,7 @@ def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = Fal
     """
 
     # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
-    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
-    # from 10% from base to apex. 
+    # Based on literature, we decided on an increase in APD from 10% from base to apex. 
     
     # Define the parameters for the AB gradient.
     initial_value = 0.25
@@ -1461,8 +1460,7 @@ def vulnerability_window_MT(inputs):
     AB_str = 'AB' if AB else 'Mid'
     
     # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
-    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
-    # from 10% from base to apex. 
+    # Based on literatyre, we decided on an increase in APD from 10% from base to apex. 
     
     # Define the parameters for the AB gradient.
     initial_value = 0.25
@@ -1605,8 +1603,7 @@ def vulnerability_window_WT(inputs):
     AB_str = 'AB' if AB else 'Mid'
     
     # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
-    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
-    # from 10% from base to apex. 
+    # Based on literature, we decided on an increase in APD from from 10% from base to apex. 
     
     # Define the parameters for the AB gradient.
     initial_value = 0.25
@@ -1749,8 +1746,7 @@ def vulnerability_window_MT_Carn1(inputs):
     AB_str = 'AB' if AB else 'Mid'
     
     # Create a matrix filled with interpolated values corresponding to the apex-base (AB) gradient.
-    # Based on Coronel et al. (2007) (10.1016/j.cardiores.2007.02.024), we decided on an increase in APD from
-    # from 10% from base to apex. 
+    # Based on literature, we decided on an increase in APD from 10% from base to apex. 
     
     # Define the parameters for the AB gradient.
     initial_value = 0.25
@@ -1959,3 +1955,70 @@ MT_reentrytotal = MT_reentrydur['Data'].sum()/1000
 MT_Carn_reentrytotal = MT_Carn_reentrydur['Data'].sum()/1000
 
 
+
+def reentry_df(reentry_range, WT = True, Carn = False, AB = True, save = False):
+    """
+    Creates a pandas DataFrame from a range of reentry values and specified conditions.
+    Args:
+        reentry_range (List[int]): A list of reentry values.
+        WT (bool, optional): Indicates whether WT condition is True or False. Defaults to True.
+        Carn (bool, optional): Indicates whether Carn condition is True or False. Defaults to False.
+    Returns:
+        pd.DataFrame: A DataFrame containing the reentry values.
+    Raises:
+        FileNotFoundError: If the file corresponding to the given conditions and reentry value is not found.
+    """
+    
+    # Initialize some conditions. 
+    npy_list = []
+    file_format = '{}{}_600_cond9_PP2000000_reentrytime_iks.npy'
+    file_prefix = 'WT' if WT else 'MT'
+    file_suffix = '_carn' if Carn else ''
+    file_AB = 'AB' if AB else 'Mid'
+ 
+    # Loop over the reentry values and try to load corresponding files
+    for i in reentry_range:
+        if WT is False:
+            if Carn is False:
+                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell_', i)
+            else:
+                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
+        else:
+            file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
+        
+        try:
+            # Load the reentry duration data from the file and add it to the list
+            reentry = np.load(file_name, allow_pickle=True)
+            npy_list.append((i, reentry))
+        except FileNotFoundError as e:
+            # If the file is not found, raise an error with an informative message
+            raise FileNotFoundError(f"File '{file_name}' not found.") from e
+    # Create a DataFrame from the list of reentry values
+    df = pd.DataFrame(npy_list, columns=['Number', 'Data']).astype(int)
+    
+    # If the 'save' flag is True, save the DataFrame to a CSV file
+    if save:
+        save_file_name = f"{file_prefix}{file_suffix}_reentrydur_1Hz_{file_AB}.csv"
+        df.to_csv(save_file_name, index=False)
+    
+    return df
+
+# Define the S1S2 ranges for each condition.
+WT_range = np.arange(240, 410, 10) 
+MT_range = np.arange(200, 410, 10)         
+MT_Carn_range = np.arange(200, 410, 10)      
+
+# Calculate the reentry durations for each of the S1S2 intervals.
+WT_reentry = reentry_df(WT_range, WT = True, Carn = False, AB = True, save = True)       
+MT_reentry = reentry_df(MT_range, WT = False, Carn = False, AB = True, save = True)
+MT_Carn_reentry = reentry_df(MT_Carn_range, WT = False, Carn = True, AB = True, save = True)
+
+# Alternatively, you can also load the data from the folder. 
+WT_reentrydur = pd.read_csv('Data/WT_reentrydur_1Hz.csv')
+MT_reentrydur = pd.read_csv('Data/MT_reentrydur_1Hz.csv')
+MT_Carn_reentrydur = pd.read_csv('Data/MT_carn_reentrydur_1Hz.csv')
+
+# Calculate the total arrhythmogenicity (in s) by summing the reentries.
+WT_reentrytotal = WT_reentrydur['Data'].sum()/1000
+MT_reentrytotal = MT_reentrydur['Data'].sum()/1000
+MT_Carn_reentrytotal = MT_Carn_reentrydur['Data'].sum()/1000
