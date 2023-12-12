@@ -678,21 +678,21 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     
     return dict(data = data, apd = apd, duration = duration, ikr = ikr)
 
-# Generate action potentials for each cell type at the base
-wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
-Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
-sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
-Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
+# Generate action potentials for each cell type at the mid
+wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
+sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
+Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
 
-wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
-Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
-sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
-Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
+wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
+sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
+Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
 
-wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
-Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
-sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
-Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
+wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
+sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
+Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
 
 # Set up the figure with 3 rows and 2 columns
 fig, axs = plt.subplots(3, 2, figsize=(12, 18))
@@ -703,7 +703,7 @@ axs[0, 0].plot(Lcarn_wt_ap_endo['data']['engine.time'], Lcarn_wt_ap_endo['data']
 axs[0, 0].legend()
 axs[0, 0].set_ylabel('Membrane potential [mV]')
 axs[0, 0].set_xlabel('Time [ms]')
-axs[0, 0].set_title('WT Loewe model (Endo, Base)')
+axs[0, 0].set_title('WT Loewe model (Endo)')
 axs[0, 0].set_xlim([0, 500])
 
 axs[0, 1].plot(sqt_ap_endo['data']['engine.time'], sqt_ap_endo['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_endo['duration']} ms")
@@ -711,7 +711,7 @@ axs[0, 1].plot(Lcarn_sqt_ap_endo['data']['engine.time'], Lcarn_sqt_ap_endo['data
 axs[0, 1].legend()
 axs[0, 1].set_ylabel('Membrane potential [mV]')
 axs[0, 1].set_xlabel('Time [ms]')
-axs[0, 1].set_title('SQT1 Loewe model (Endo, Base)')
+axs[0, 1].set_title('SQT1 Loewe model (Endo)')
 axs[0, 1].set_xlim([0, 500])
 
 # Plot the results for epi
@@ -720,7 +720,7 @@ axs[1, 0].plot(Lcarn_wt_ap_epi['data']['engine.time'], Lcarn_wt_ap_epi['data']['
 axs[1, 0].legend()
 axs[1, 0].set_ylabel('Membrane potential [mV]')
 axs[1, 0].set_xlabel('Time [ms]')
-axs[1, 0].set_title('WT Loewe model (Epi, Base)')
+axs[1, 0].set_title('WT Loewe model (Epi)')
 axs[1, 0].set_xlim([0, 500])
 
 axs[1, 1].plot(sqt_ap_epi['data']['engine.time'], sqt_ap_epi['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_epi['duration']} ms")
@@ -728,7 +728,7 @@ axs[1, 1].plot(Lcarn_sqt_ap_epi['data']['engine.time'], Lcarn_sqt_ap_epi['data']
 axs[1, 1].legend()
 axs[1, 1].set_ylabel('Membrane potential [mV]')
 axs[1, 1].set_xlabel('Time [ms]')
-axs[1, 1].set_title('SQT1 Loewe model (Epi, Base)')
+axs[1, 1].set_title('SQT1 Loewe model (Epi)')
 axs[1, 1].set_xlim([0, 500])
 
 # Plot the results for mid
@@ -737,7 +737,7 @@ axs[2, 0].plot(Lcarn_wt_ap_mid['data']['engine.time'], Lcarn_wt_ap_mid['data']['
 axs[2, 0].legend()
 axs[2, 0].set_ylabel('Membrane potential [mV]')
 axs[2, 0].set_xlabel('Time [ms]')
-axs[2, 0].set_title('WT Loewe model (Mid, Base)')
+axs[2, 0].set_title('WT Loewe model (Mid)')
 axs[2, 0].set_xlim([0, 500])
 
 axs[2, 1].plot(sqt_ap_mid['data']['engine.time'], sqt_ap_mid['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_mid['duration']} ms")
@@ -745,7 +745,7 @@ axs[2, 1].plot(Lcarn_sqt_ap_mid['data']['engine.time'], Lcarn_sqt_ap_mid['data']
 axs[2, 1].legend()
 axs[2, 1].set_ylabel('Membrane potential [mV]')
 axs[2, 1].set_xlabel('Time [ms]')
-axs[2, 1].set_title('SQT1 Loewe model (Mid, Base)')
+axs[2, 1].set_title('SQT1 Loewe model (Mid)')
 axs[2, 1].set_xlim([0, 500])
 
 # Adjust layout for better spacing
