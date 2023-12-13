@@ -639,7 +639,7 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     # Set the AB gradient
     if apex == 0:
         sim.set_constant('ikb.ikb_scalar', 0.25)
-        sim.set_constant('iks.AB_iks', 1) 
+        sim.set_constant('iks.AB_iks', 1) #0.1 is 20%
     elif apex == 1:
         sim.set_constant('ikb.ikb_scalar', 1)
         sim.set_constant('iks.AB_iks', 1)
@@ -678,21 +678,21 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     
     return dict(data = data, apd = apd, duration = duration, ikr = ikr)
 
-# Generate action potentials for each cell type at the mid
-wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
-Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
-sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
-Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
+# Generate action potentials for each cell type at the base
+wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
+Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
+sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
+Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
 
-wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
-Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
-sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
-Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
+wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
+Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
+sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
+Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
 
-wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
-Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
-sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
-Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
+wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
+Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
+sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
+Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
 
 # Set up the figure with 3 rows and 2 columns
 fig, axs = plt.subplots(3, 2, figsize=(12, 18))
@@ -703,7 +703,7 @@ axs[0, 0].plot(Lcarn_wt_ap_endo['data']['engine.time'], Lcarn_wt_ap_endo['data']
 axs[0, 0].legend()
 axs[0, 0].set_ylabel('Membrane potential [mV]')
 axs[0, 0].set_xlabel('Time [ms]')
-axs[0, 0].set_title('WT Loewe model (Endo)')
+axs[0, 0].set_title('WT Loewe model (Endo, Base)')
 axs[0, 0].set_xlim([0, 500])
 
 axs[0, 1].plot(sqt_ap_endo['data']['engine.time'], sqt_ap_endo['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_endo['duration']} ms")
@@ -711,7 +711,7 @@ axs[0, 1].plot(Lcarn_sqt_ap_endo['data']['engine.time'], Lcarn_sqt_ap_endo['data
 axs[0, 1].legend()
 axs[0, 1].set_ylabel('Membrane potential [mV]')
 axs[0, 1].set_xlabel('Time [ms]')
-axs[0, 1].set_title('SQT1 Loewe model (Endo)')
+axs[0, 1].set_title('SQT1 Loewe model (Endo, Base)')
 axs[0, 1].set_xlim([0, 500])
 
 # Plot the results for epi
@@ -720,7 +720,7 @@ axs[1, 0].plot(Lcarn_wt_ap_epi['data']['engine.time'], Lcarn_wt_ap_epi['data']['
 axs[1, 0].legend()
 axs[1, 0].set_ylabel('Membrane potential [mV]')
 axs[1, 0].set_xlabel('Time [ms]')
-axs[1, 0].set_title('WT Loewe model (Epi)')
+axs[1, 0].set_title('WT Loewe model (Epi, Base)')
 axs[1, 0].set_xlim([0, 500])
 
 axs[1, 1].plot(sqt_ap_epi['data']['engine.time'], sqt_ap_epi['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_epi['duration']} ms")
@@ -728,7 +728,7 @@ axs[1, 1].plot(Lcarn_sqt_ap_epi['data']['engine.time'], Lcarn_sqt_ap_epi['data']
 axs[1, 1].legend()
 axs[1, 1].set_ylabel('Membrane potential [mV]')
 axs[1, 1].set_xlabel('Time [ms]')
-axs[1, 1].set_title('SQT1 Loewe model (Epi)')
+axs[1, 1].set_title('SQT1 Loewe model (Epi, Base)')
 axs[1, 1].set_xlim([0, 500])
 
 # Plot the results for mid
@@ -737,7 +737,7 @@ axs[2, 0].plot(Lcarn_wt_ap_mid['data']['engine.time'], Lcarn_wt_ap_mid['data']['
 axs[2, 0].legend()
 axs[2, 0].set_ylabel('Membrane potential [mV]')
 axs[2, 0].set_xlabel('Time [ms]')
-axs[2, 0].set_title('WT Loewe model (Mid)')
+axs[2, 0].set_title('WT Loewe model (Mid, Base)')
 axs[2, 0].set_xlim([0, 500])
 
 axs[2, 1].plot(sqt_ap_mid['data']['engine.time'], sqt_ap_mid['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_mid['duration']} ms")
@@ -745,7 +745,7 @@ axs[2, 1].plot(Lcarn_sqt_ap_mid['data']['engine.time'], Lcarn_sqt_ap_mid['data']
 axs[2, 1].legend()
 axs[2, 1].set_ylabel('Membrane potential [mV]')
 axs[2, 1].set_xlabel('Time [ms]')
-axs[2, 1].set_title('SQT1 Loewe model (Mid)')
+axs[2, 1].set_title('SQT1 Loewe model (Mid, Base)')
 axs[2, 1].set_xlim([0, 500])
 
 # Adjust layout for better spacing
@@ -840,7 +840,7 @@ axs[2, 1].set_xlim([0, 500])
 # Tidy the layout.
 plt.tight_layout()
 
-#%% Optimize the IKb to get a 10% difference 
+#%% Optimize the IKb to get a 20% difference 
 wt_ap_endo_mid = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
 wt_ap_endo_base = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 0)
 wt_ap_endo_apex = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 2)
@@ -1399,9 +1399,9 @@ MT_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5
 MT_carn_pre_pace = pre_pace(n = 400, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True)
 
 # Larger endocardial tissue (9 x 9 cm) with AB gradient.
-WT_pp_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False, AB = True)
-MT_pp_pace_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False, AB = True)
-MT_carn_pp_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 9, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True, AB = True)
+MT_pp_pace_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 12, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = False, AB = True)
+MT_carn_pp_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 12, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = False, carn = True, AB = True)
+WT_pp_large_AB = pre_pace(n = 600, t = 1000, dur = 10000, conduct = 12, interval = 5, carn_list = Lcarn_sqt1, pp = 2000000, WT = True, carn = False, AB = True)
 
 #%%  MT reentry function.
 
@@ -1446,7 +1446,7 @@ def vulnerability_window_MT(inputs):
     t = 1000
     dur = 100
     dur_sim = 1000
-    conduct = 9
+    conduct = 12 #used to be 51 at 9, 10 = 55, 12 = 60
     interval = 5
     carn_list = Lcarn_sqt1
     pp = 2000000
@@ -1589,7 +1589,7 @@ def vulnerability_window_WT(inputs):
     t = 1000
     dur = 100
     dur_sim = 1000
-    conduct = 9
+    conduct = 12 #used to be 51 at 9 
     interval = 5
     carn_list = Lcarn_sqt1
     pp = 2000000
@@ -1692,7 +1692,7 @@ def vulnerability_window_WT(inputs):
 #%% MT + L-carn reentry
 Lcarn_sqt1 = [0.017787,-48.520307,14.325950,22.303676,6.877993,0.000241,14.842432,-5.368071,-3.843856,4.941128,2.061902]
 
-def vulnerability_window_MT_Carn1(inputs):
+def vulnerability_window_MT_Carn(inputs):
     """Calculate vulnerability window for specific input(s).
 
     This function calculates the vulnerability window for a specific S1S2 input value (or a range of S1S2) by simulating
@@ -1732,7 +1732,7 @@ def vulnerability_window_MT_Carn1(inputs):
     t = 1000
     dur = 100
     dur_sim = 1000
-    conduct = 9
+    conduct = 12 #used to be 51 at 9 
     interval = 5
     carn_list = Lcarn_sqt1
     pp = 2000000
@@ -1842,7 +1842,7 @@ if __name__ == '__main__':
     final_results = []
     
     # Create a list of S1S2 values to iterate over.
-    my_list = list(range(200, 210, 10))
+    my_list = list(range(200, 250, 10))
     
     # Set the value of 'cellular pre-pacing' to 2000000 ms.
     pp = 2000000
@@ -1854,13 +1854,13 @@ if __name__ == '__main__':
     
     # Apply the function 'vulnerability_window_MT' to each element of 'my_list' in parallel.
     # The 'imap' method returns an iterator that yields the results of the function calls in the order of input.
-    results = pool.imap(vulnerability_window_MT, my_list)
+    results = pool.imap(vulnerability_window_WT, my_list)
     
     # Collect the results obtained from each iteration and store them in the 'final_results' list.
     # Also, save the simulation blocks obtained from each result to a file with a specific naming convention.
     for i, result in enumerate(results):
         final_results.append(result)
-        result['block'].save(f'2D_sim_MT_cell_res{my_list[i]}_600_conduct9_PP{pp}_1Hz_AB.zip')
+        result['block'].save(f'2D_sim_WT_cell_res{my_list[i]}_600_conduct12_PP{pp}_1Hz_AB.zip')
 
     # Close the Pool to prevent any more tasks from being submitted to it.
     pool.close()
@@ -1880,40 +1880,61 @@ if __name__ == '__main__':
     
 #%% Import all the reentry durations.
 
-def reentry_df(reentry_range, WT = True, Carn = False, AB = True, save = False):
-
+def reentry_df(reentry_range, zero = None, WT = True, Carn = False, AB = True, save = False):
     """
     Creates a pandas DataFrame from a range of reentry values and specified conditions.
 
-    Args:
-        reentry_range (List[int]): A list of reentry values.
-        WT (bool, optional): Indicates whether WT condition is True or False. Defaults to True.
-        Carn (bool, optional): Indicates whether Carn condition is True or False. Defaults to False.
+    Parameters
+    ----------
+    reentry_range : List
+        A list of reentry values.
+        
+    zero : DataFrame, optional
+        A DataFrame containing indices to be zeroed and their corresponding values.
+        Defaults to None.
+        
+    WT : bool, optional
+        Indicates whether WT condition is True or False. Defaults to True.
+        
+    Carn : bool, optional
+        Indicates whether Carn condition is True or False. Defaults to False.
+        
+    AB : bool, optional
+        Indicates whether AB condition is True or False. Defaults to True.
+        
+    save : bool, optional
+        If True, saves the DataFrame to a CSV file. Defaults to False.
 
-    Returns:
-        pd.DataFrame: A DataFrame containing the reentry values.
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the reentry values.
 
-    Raises:
-        FileNotFoundError: If the file corresponding to the given conditions and reentry value is not found.
-
+    Raises
+    ------
+    FileNotFoundError
+        If the file corresponding to the given conditions and reentry value is not found.
     """
     
     # Initialize some conditions. 
     npy_list = []
-    file_format = '{}{}_600_cond9_PP2000000_reentrytime_iks.npy'
+    if AB:
+        file_format = '{}{}_600_cond12_PP2000000_reentrytime_1.0Hz_AB.npy'
+    else:
+        file_format = '{}{}_600_cond12_PP2000000_reentrytime_1.0Hz_Mid.npy'
     file_prefix = 'WT' if WT else 'MT'
     file_suffix = '_carn' if Carn else ''
     file_AB = 'AB' if AB else 'Mid'
- 
+   
     # Loop over the reentry values and try to load corresponding files
     for i in reentry_range:
         if WT is False:
             if Carn is False:
-                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell_', i)
+                file_name = file_format.format(file_prefix + file_suffix  + '_cell', i)
             else:
-                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
+                file_name = file_format.format(file_prefix + file_suffix + '_cell', i)
         else:
-            file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
+            file_name = file_format.format(file_prefix + file_suffix + '_cell', i)
         
         try:
             # Load the reentry duration data from the file and add it to the list
@@ -1922,79 +1943,12 @@ def reentry_df(reentry_range, WT = True, Carn = False, AB = True, save = False):
         except FileNotFoundError as e:
             # If the file is not found, raise an error with an informative message
             raise FileNotFoundError(f"File '{file_name}' not found.") from e
-
+    
     # Create a DataFrame from the list of reentry values
     df = pd.DataFrame(npy_list, columns=['Number', 'Data']).astype(int)
-    
-    # If the 'save' flag is True, save the DataFrame to a CSV file
-    if save:
-        save_file_name = f"{file_prefix}{file_suffix}_reentrydur_1Hz_{file_AB}.csv"
-        df.to_csv(save_file_name, index=False)
-    
-    return df
-
-
-# Define the S1S2 ranges for each condition.
-WT_range = np.arange(240, 410, 10) 
-MT_range = np.arange(200, 410, 10)         
-MT_Carn_range = np.arange(200, 410, 10)      
-
-# Calculate the reentry durations for each of the S1S2 intervals.
-WT_reentry = reentry_df(WT_range, WT = True, Carn = False, AB = True, save = True)       
-MT_reentry = reentry_df(MT_range, WT = False, Carn = False, AB = True, save = True)
-MT_Carn_reentry = reentry_df(MT_Carn_range, WT = False, Carn = True, AB = True, save = True)
-
-# Alternatively, you can also load the data from the folder. 
-WT_reentrydur = pd.read_csv('Data/WT_reentrydur_1Hz.csv')
-MT_reentrydur = pd.read_csv('Data/MT_reentrydur_1Hz.csv')
-MT_Carn_reentrydur = pd.read_csv('Data/MT_carn_reentrydur_1Hz.csv')
-
-# Calculate the total arrhythmogenicity (in s) by summing the reentries.
-WT_reentrytotal = WT_reentrydur['Data'].sum()/1000
-MT_reentrytotal = MT_reentrydur['Data'].sum()/1000
-MT_Carn_reentrytotal = MT_Carn_reentrydur['Data'].sum()/1000
-
-
-
-def reentry_df(reentry_range, WT = True, Carn = False, AB = True, save = False):
-    """
-    Creates a pandas DataFrame from a range of reentry values and specified conditions.
-    Args:
-        reentry_range (List[int]): A list of reentry values.
-        WT (bool, optional): Indicates whether WT condition is True or False. Defaults to True.
-        Carn (bool, optional): Indicates whether Carn condition is True or False. Defaults to False.
-    Returns:
-        pd.DataFrame: A DataFrame containing the reentry values.
-    Raises:
-        FileNotFoundError: If the file corresponding to the given conditions and reentry value is not found.
-    """
-    
-    # Initialize some conditions. 
-    npy_list = []
-    file_format = '{}{}_600_cond9_PP2000000_reentrytime_iks.npy'
-    file_prefix = 'WT' if WT else 'MT'
-    file_suffix = '_carn' if Carn else ''
-    file_AB = 'AB' if AB else 'Mid'
- 
-    # Loop over the reentry values and try to load corresponding files
-    for i in reentry_range:
-        if WT is False:
-            if Carn is False:
-                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell_', i)
-            else:
-                file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
-        else:
-            file_name = file_format.format(file_prefix + file_suffix + file_AB + '_cell', i)
-        
-        try:
-            # Load the reentry duration data from the file and add it to the list
-            reentry = np.load(file_name, allow_pickle=True)
-            npy_list.append((i, reentry))
-        except FileNotFoundError as e:
-            # If the file is not found, raise an error with an informative message
-            raise FileNotFoundError(f"File '{file_name}' not found.") from e
-    # Create a DataFrame from the list of reentry values
-    df = pd.DataFrame(npy_list, columns=['Number', 'Data']).astype(int)
+    if zero is not None:
+        df = pd.concat([zero, df], axis=0)
+        df = df.sort_values(by = 'Number')
     
     # If the 'save' flag is True, save the DataFrame to a CSV file
     if save:
@@ -2004,21 +1958,26 @@ def reentry_df(reentry_range, WT = True, Carn = False, AB = True, save = False):
     return df
 
 # Define the S1S2 ranges for each condition.
-WT_range = np.arange(240, 410, 10) 
-MT_range = np.arange(200, 410, 10)         
-MT_Carn_range = np.arange(200, 410, 10)      
+WT_range = np.arange(270, 510, 10) 
+MT_range = np.arange(200, 510, 10)         
+MT_Carn_range = np.arange(200, 510, 10)  
+
+# Create a dataframe with the missing indices and set those values to zero
+zero_list_WT = np.arange(200, 270, 10)
+df_WT_missing = pd.DataFrame({'Number': zero_list_WT, 'Data': 0})    
 
 # Calculate the reentry durations for each of the S1S2 intervals.
-WT_reentry = reentry_df(WT_range, WT = True, Carn = False, AB = True, save = True)       
-MT_reentry = reentry_df(MT_range, WT = False, Carn = False, AB = True, save = True)
-MT_Carn_reentry = reentry_df(MT_Carn_range, WT = False, Carn = True, AB = True, save = True)
+WT_reentry = reentry_df(WT_range, zero = df_WT_missing, WT = True, Carn = False, AB = True, save = True)       
+MT_reentry = reentry_df(MT_range, zero = None, WT = False, Carn = False, AB = True, save = True)
+MT_Carn_reentry = reentry_df(MT_Carn_range, zero = None, WT = False, Carn = True, AB = True, save = True)
 
 # Alternatively, you can also load the data from the folder. 
-WT_reentrydur = pd.read_csv('Data/WT_reentrydur_1Hz.csv')
-MT_reentrydur = pd.read_csv('Data/MT_reentrydur_1Hz.csv')
-MT_Carn_reentrydur = pd.read_csv('Data/MT_carn_reentrydur_1Hz.csv')
+WT_reentrydur = pd.read_csv('WT_reentrydur_1Hz_AB.csv')
+MT_reentrydur = pd.read_csv('MT_reentrydur_1Hz_AB.csv')
+MT_Carn_reentrydur = pd.read_csv('MT_carn_reentrydur_1Hz_AB.csv')
 
 # Calculate the total arrhythmogenicity (in s) by summing the reentries.
 WT_reentrytotal = WT_reentrydur['Data'].sum()/1000
 MT_reentrytotal = MT_reentrydur['Data'].sum()/1000
 MT_Carn_reentrytotal = MT_Carn_reentrydur['Data'].sum()/1000
+
