@@ -283,7 +283,7 @@ def err_func(x, xfull, inds, carn_steady, carn_tail, steady_sqt, tail_sqt,
             s.set_constant('ik1.ik1_carn', 2)
         else: 
             s.set_constant('iks.iks_scalar', 0.88)
-            s.set_constant('ik1.ik1_scalar', 1) # MT + L-carn
+            s.set_constant('ik1.ik1_carn', 1) # MT + L-carn
 
     # Run the simulation protocol and log several variables.
     d = s.run(t_act)
@@ -679,20 +679,20 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     return dict(data = data, apd = apd, duration = duration, ikr = ikr)
 
 # Generate action potentials for each cell type at the base
-wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
-Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
-sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
-Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
+wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
+sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
+Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
 
-wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
-Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
-sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
-Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
+wt_ap_epi = action_pot(m = m2, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+Lcarn_wt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
+sqt_ap_epi = action_pot(m = m2, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
+Lcarn_sqt_ap_epi = action_pot(m = m2, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
 
-wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = False)
-Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = False)
-sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = False)
-Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = False)
+wt_ap_mid = action_pot(m = m3, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+Lcarn_wt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
+sqt_ap_mid = action_pot(m = m3, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
+Lcarn_sqt_ap_mid = action_pot(m = m3, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
 
 # Set up the figure with 3 rows and 2 columns
 fig, axs = plt.subplots(3, 2, figsize=(12, 18))
@@ -703,7 +703,7 @@ axs[0, 0].plot(Lcarn_wt_ap_endo['data']['engine.time'], Lcarn_wt_ap_endo['data']
 axs[0, 0].legend()
 axs[0, 0].set_ylabel('Membrane potential [mV]')
 axs[0, 0].set_xlabel('Time [ms]')
-axs[0, 0].set_title('WT Loewe model (Endo, Base)')
+axs[0, 0].set_title('WT Loewe model (Endo)')
 axs[0, 0].set_xlim([0, 500])
 
 axs[0, 1].plot(sqt_ap_endo['data']['engine.time'], sqt_ap_endo['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_endo['duration']} ms")
@@ -711,7 +711,7 @@ axs[0, 1].plot(Lcarn_sqt_ap_endo['data']['engine.time'], Lcarn_sqt_ap_endo['data
 axs[0, 1].legend()
 axs[0, 1].set_ylabel('Membrane potential [mV]')
 axs[0, 1].set_xlabel('Time [ms]')
-axs[0, 1].set_title('SQT1 Loewe model (Endo, Base)')
+axs[0, 1].set_title('SQT1 Loewe model (Endo)')
 axs[0, 1].set_xlim([0, 500])
 
 # Plot the results for epi
@@ -720,7 +720,7 @@ axs[1, 0].plot(Lcarn_wt_ap_epi['data']['engine.time'], Lcarn_wt_ap_epi['data']['
 axs[1, 0].legend()
 axs[1, 0].set_ylabel('Membrane potential [mV]')
 axs[1, 0].set_xlabel('Time [ms]')
-axs[1, 0].set_title('WT Loewe model (Epi, Base)')
+axs[1, 0].set_title('WT Loewe model (Epi)')
 axs[1, 0].set_xlim([0, 500])
 
 axs[1, 1].plot(sqt_ap_epi['data']['engine.time'], sqt_ap_epi['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_epi['duration']} ms")
@@ -728,7 +728,7 @@ axs[1, 1].plot(Lcarn_sqt_ap_epi['data']['engine.time'], Lcarn_sqt_ap_epi['data']
 axs[1, 1].legend()
 axs[1, 1].set_ylabel('Membrane potential [mV]')
 axs[1, 1].set_xlabel('Time [ms]')
-axs[1, 1].set_title('SQT1 Loewe model (Epi, Base)')
+axs[1, 1].set_title('SQT1 Loewe model (Epi)')
 axs[1, 1].set_xlim([0, 500])
 
 # Plot the results for mid
@@ -737,7 +737,7 @@ axs[2, 0].plot(Lcarn_wt_ap_mid['data']['engine.time'], Lcarn_wt_ap_mid['data']['
 axs[2, 0].legend()
 axs[2, 0].set_ylabel('Membrane potential [mV]')
 axs[2, 0].set_xlabel('Time [ms]')
-axs[2, 0].set_title('WT Loewe model (Mid, Base)')
+axs[2, 0].set_title('WT Loewe model (Mid)')
 axs[2, 0].set_xlim([0, 500])
 
 axs[2, 1].plot(sqt_ap_mid['data']['engine.time'], sqt_ap_mid['data']['membrane.V'], 'k', label=f"No L-carnitine, APD = {sqt_ap_mid['duration']} ms")
@@ -745,7 +745,7 @@ axs[2, 1].plot(Lcarn_sqt_ap_mid['data']['engine.time'], Lcarn_sqt_ap_mid['data']
 axs[2, 1].legend()
 axs[2, 1].set_ylabel('Membrane potential [mV]')
 axs[2, 1].set_xlabel('Time [ms]')
-axs[2, 1].set_title('SQT1 Loewe model (Mid, Base)')
+axs[2, 1].set_title('SQT1 Loewe model (Mid)')
 axs[2, 1].set_xlim([0, 500])
 
 # Adjust layout for better spacing
@@ -896,6 +896,11 @@ axes[2].set_xticklabels(rel_apd_labels)
 
 # Adjust layout.
 plt.tight_layout()
+
+# Save the results into a .csv
+rel_apd_endo.to_csv('rel_apd_endo.csv', index = False)
+rel_apd_mid.to_csv('rel_apd_mid.csv', index = False)
+rel_apd_epi.to_csv('rel_apd_epi.csv', index = False)
 #%% Rabbit ventricular model
 
 # Load the rabbit model
@@ -1020,7 +1025,7 @@ RL_Lcarn_wt = rabbit_loewe(mrl = mrl, prl = prl, x = Lcarn_wt, prepace = 1000)
 RL_Lcarn_sqt1 = rabbit_loewe(mrl = mrl, prl = prl, x = Lcarn_sqt1, prepace = 1000)
  
 # Visualize the results
-fig, axs = plt.subplots(2, 1, figsize=(12, 18))
+fig, axs = plt.subplots(2, 2, figsize=(12, 18))
 
 axs[0, 0].plot(RL_wt['data']['Environment.time'], RL_wt['data']['cell.V'], 'k', label = f'WT, apd90 = {RL_wt["apd"]} ms')
 axs[0, 0].legend()
@@ -1068,6 +1073,26 @@ axs[1].set_xlim([0, 500])
 # Tidy up the plots.
 plt.tight_layout()
 
+# Export the rabbit data to .csv by first creating a dataframe
+df_RL_wt = pd.DataFrame({'Time': RL_wt['data']['Environment.time'],
+                         'vM': RL_wt['data']['cell.V'],
+                         'ikr': RL_wt['data']['IKr.xikr']})
+df_RL_wt.to_csv('RL_WT.csv', index = False)
+
+df_RL_Lcarn_wt = pd.DataFrame({'Time': RL_Lcarn_wt['data']['Environment.time'],
+                         'vM': RL_Lcarn_wt['data']['cell.V'],
+                         'ikr': RL_Lcarn_wt['data']['IKr.xikr']})
+df_RL_Lcarn_wt.to_csv('RL_Lcarn_WT.csv', index = False)
+
+df_RL_SQT1 = pd.DataFrame({'Time': RL_sqt1['data']['Environment.time'],
+                         'vM': RL_sqt1['data']['cell.V'],
+                         'ikr': RL_sqt1['data']['IKr.xikr']})
+df_RL_SQT1.to_csv('RL_SQT1.csv', index = False)
+
+df_RL_Lcarn_sqt1 = pd.DataFrame({'Time': RL_Lcarn_sqt1['data']['Environment.time'],
+                         'vM': RL_Lcarn_sqt1['data']['cell.V'],
+                         'ikr': RL_Lcarn_sqt1['data']['IKr.xikr']})
+df_RL_Lcarn_sqt1.to_csv('RL_Lcarn_SQT1.csv', index = False)
 #%% IKr, IKs, IK1 sensitivity analysis
 
 # Load the model.
@@ -1253,6 +1278,17 @@ axs[1].set_ylabel('Membrane potential (mV)')
 
 # Tidy up the plot.
 plt.tight_layout()
+
+# Export the results to .csv
+export_dict_to_csv_AP(wt_carn_sens, base_filename = 'WT_carn_sens')
+export_dict_to_csv_AP(wt_carn_noik1, base_filename = 'WT_carn_noik1')
+export_dict_to_csv_AP(wt_carn_noiks, base_filename = 'WT_carn_noiks')
+export_dict_to_csv_AP(wt_carn_noikr, base_filename = 'WT_carn_noikr')
+
+export_dict_to_csv_AP(sqt1_carn_sens, base_filename = 'SQT1_carn_sens')
+export_dict_to_csv_AP(sqt1_carn_noik1, base_filename = 'SQT1_carn_noik1')
+export_dict_to_csv_AP(sqt1_carn_noiks, base_filename = 'SQT1_carn_noiks')
+export_dict_to_csv_AP(sqt1_carn_noikr, base_filename = 'SQT1_carn_noikr')
 #%% Prepace function
 
 def pre_pace(n, t, dur, conduct, carn_list, interval, pp, WT = False, carn = False, AB = False):
@@ -1980,4 +2016,10 @@ MT_Carn_reentrydur = pd.read_csv('MT_carn_reentrydur_1Hz_AB.csv')
 WT_reentrytotal = WT_reentrydur['Data'].sum()/1000
 MT_reentrytotal = MT_reentrydur['Data'].sum()/1000
 MT_Carn_reentrytotal = MT_Carn_reentrydur['Data'].sum()/1000
+
+# Export the total arrhythmogenicity plots to .csv
+total_arr = pd.DataFrame({'WT': WT_reentrytotal,
+                          'SQT1': MT_reentrytotal,
+                          'SQT1_Carn': MT_Carn_reentrytotal}, index = [0])
+total_arr.to_csv('Total_arr.csv', index = False)
 
