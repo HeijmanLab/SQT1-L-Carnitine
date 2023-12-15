@@ -978,7 +978,7 @@ plt.show()
 #%% Rabbit model APs and effects of MT and L-Carn treatment
 
 # Simulate the effects of the MT and the L-Carnitine treatment in the rabbit model
-# with the Loewe et al. (2014) Markov Model.
+# with the Loewe et al. (2014) IKr formulations.
 
 # Load the rabbit model
 mrl = myokit.load_model('MMT/Mahajan-2008.mmt')
