@@ -158,7 +158,7 @@ ki.set_rhs(120)
 
 ## Initialize the steps in patch-clamp protocol and add a small margin due to problems 
 ## w/ zero division.
-steps_act = np.arange(-31, 60, 10) 
+steps_act = np.arange(-31, 70, 10) 
 p_act = myokit.Protocol()
 for k,step in enumerate(steps_act):
     # 1500ms of holding potential
@@ -319,6 +319,10 @@ def err_func(x, xfull, inds, carn_steady, carn_tail, steady_sqt, tail_sqt,
     Ikr_tail = np.zeros(len(ds)) 
     Iks_tail = np.zeros(len(ds))
     
+    # Initiate the ik1 current variable
+    Ik1_max = np.zeros(len(ds))
+    Ik1 = np.zeros(len(ds))
+    
     # Trim each new log to contain the steps of interest by enumerating through the individual duration steps.
     for k, d in enumerate(ds):
         # Adjust is the time at the start of every sweep which is set to zero.
@@ -340,6 +344,10 @@ def err_func(x, xfull, inds, carn_steady, carn_tail, steady_sqt, tail_sqt,
         # Obtain the max of the tail.
         Ikr_tail[k] = max(tail['ikr.IKr']) 
         Iks_tail[k] = max(tail['iks.IKs']) 
+        
+        # Track the IK1 current
+        Ik1_max[k] = max(d['ik1.IK1'])
+        Ik1[k] = d['ik1.IK1']
 
     # Calculate the ratio of between the model tail and the MT tail, vice versa for steady.
     if mt_flag is True: 
@@ -444,7 +452,7 @@ def err_func(x, xfull, inds, carn_steady, carn_tail, steady_sqt, tail_sqt,
     if return_err is True:
         return error
     else:
-        return dict(steps = steps_act, ikr_steady = Ikr_steady, ikr_tail = Ikr_tail, iks_steady = Iks_steady, iks_tail = Iks_tail,
+        return dict(steps = steps_act, ikr_steady = Ikr_steady, ikr_tail = Ikr_tail, iks_steady = Iks_steady, iks_tail = Iks_tail, ik1 = Ik1, ik1_max = Ik1_max,
                     ref_steady = steady_sqt, ref_tail = tail_sqt)
 #%% Perform the error minimization
 
@@ -553,6 +561,161 @@ export_df_to_csv(steps = steady_steps, data = steady_WTc_model_sel, filename = '
 export_df_to_csv(steps = tail_steps, data = tail_WTc_model_sel, filename = 'tail_WTc_model')
 export_df_to_csv(steps = steady_steps, data = steady_MTc_model_sel, filename = 'steady_MTc_model')
 export_df_to_csv(steps = tail_steps, data = tail_MTc_model_sel, filename = 'tail_MTc_model')
+
+#%% Voltage-steps protocol for Ik1
+
+## Initialize the steps in patch-clamp protocol and add a small margin due to problems 
+## w/ zero division.
+steps_ik1 = np.arange(-121, 80, 10) 
+p_ik1 = myokit.Protocol()
+for k,step in enumerate(steps_ik1):
+    # 2000ms of holding potential
+    p_ik1.add_step(-20, 2000) 
+    # Voltage step for 500 ms
+    p_ik1.add_step(step, 500)
+    # resume holding potential for 2000ms
+    p_ik1.add_step(-20, 2000)
+t_ik1 = p_ik1.characteristic_time()-1
+s_ik1 = myokit.Simulation(m1, p_ik1)
+
+#%% Obtain the IK1 traces by creating another simulation.
+
+def ik1_func(x, xfull, inds, mt_flag = False, carn_flag = False):
+    """
+    Parameter optimization to minimize the sum of squared errors between the model and the experimental behavior.
+    
+    This function performs parameter optimization to minimize the sum of squared errors between the model and the experimental behavior of the action potential. The action potential simulation is based on the provided model and protocol. The optimization aims to fit the model's steady-state and tail currents for IKr and IKs to experimental data.
+    Parameters:
+    ----------
+    x : list of float
+        A list of parameter values for the iKr (rapid delayed rectifier potassium current) model components to be optimized.
+        
+    xfull : list of float
+        The full set of parameters for the iKr model. This list contains both the optimized parameters and constant parameters.
+        
+    inds : list of int
+        A list of indices specifying the positions of the parameters to be optimized within the 'xfull' list.
+        
+    mt_flag : bool, optional (default = False)
+        Flag indicating whether the simulation should include a modification to the iKr current based on the 'mt' condition.
+    
+    carn_flag : bool, optional (default = False)
+        Flag indicating whether the simulation should include a modification to the iKr current based on the 'carn' condition.
+    
+    Returns:
+    -------
+    Dict
+        Ik1 traces dictionary.
+    """
+    
+    # Reset to initial states and re-run simulation for every iteration of the error function.
+    s_ik1.reset()
+    
+    # Re-initiate the protocol.
+    s_ik1.set_protocol(p_ik1)
+    
+    # Set the maximum stepsize to 2ms to obtain better step curves.
+    s_ik1.set_max_step_size(2) 
+     
+    # Set the extracellular potassium concentration to Odening et al. 2019.
+    s_ik1.set_constant('extra.Ko', 5.4)
+
+    # Set tolerance to counter suboptimal optimalisation with CVODE.
+    s_ik1.set_tolerance(1e-8, 1e-8)
+
+    # Set the indices 
+    xarr = np.array(xfull)
+    xarr[inds] = np.array(x)
+    
+    # Set the parameters
+    for i in range(len(xarr)):
+        s_ik1.set_constant(f"ikr.p{i+1}", xarr[i])
+    
+    if mt_flag is False:
+        if carn_flag is False: 
+            s_ik1.set_constant('iks.iks_scalar', 1)
+            s_ik1.set_constant('ik1.ik1_carn', 2)
+        else:
+            s_ik1.set_constant('iks.iks_scalar', 0.75)
+            s_ik1.set_constant('ik1.ik1_carn', 0) # WT + L-carn
+    else:
+        if carn_flag is False:
+            s_ik1.set_constant('iks.iks_scalar', 1.35)
+            s_ik1.set_constant('ik1.ik1_carn', 2)
+        else: 
+            s_ik1.set_constant('iks.iks_scalar', 0.88)
+            s_ik1.set_constant('ik1.ik1_carn', 1) # MT + L-carn
+
+    # Run the simulation protocol and log several variables.
+    d = s_ik1.run(t_ik1)
+        
+    # Split the log into smaller chunks to overlay; to get the individual steps.
+    ds = d.split_periodic(4500, adjust=True) 
+    
+    # Initiate the ik1 current variable
+    Ik1_peak = np.zeros(len(ds))
+    
+    # Trim each new log to contain the steps of interest by enumerating through the individual duration steps.
+    for k, d in enumerate(ds):
+        
+        # Trim left
+        left = d.trim_left(2001, adjust = True)
+        peak = left.trim_right(499)
+        
+        # Track the IK1 current
+        Ik1_peak[k] = max(peak['ik1.IK1'])
+    
+    plt.figure()
+    plt.plot(steps_ik1, Ik1_peak, label = 'ik1', color = 'k')
+    #plt.plot(steps_ik1, Ik1_max, label = 'ik1_max', color = 'r')
+        
+        
+    return dict(steps = steps_ik1, ik1 = Ik1_peak)
+
+# Select the WT data.
+xfull_WT = np.array(x_wt)
+xsel_WT = xfull_WT[inds]
+
+# Run the simulation for the WT. 
+Odening_WT_ik1 = ik1_func(xsel_WT, xfull = xfull_WT, inds = inds, mt_flag = False,  carn_flag = False)  
+
+# Select the MT data.
+xfull_MT = np.array(x_default_sqt)
+xsel_MT = xfull_MT[inds]
+
+# Run the simulation for the MT.
+Odening_MT_ik1 = ik1_func(xsel_MT, xfull = xfull_MT, inds = inds, mt_flag = True, carn_flag = False)    
+
+# Select the L-carnitine WT data.
+xfull_carn_WT = np.array(Lcarn_wt)
+xsel_carn_WT = xfull_carn_WT[inds]
+
+# Run the simulation for the L-carnitine WT data.
+Odening_WT_carn_ik1 = ik1_func(xsel_carn_WT, xfull = xfull_carn_WT, inds = inds, mt_flag = False, carn_flag = True)    
+
+# Select the Carnitine data. 
+xfull_carn = np.array(Lcarn_sqt1)
+xsel_carn = xfull_carn[inds]
+
+# Run the simulation for the L-carnitine SQT1 data.
+Odening_MT_carn_ik1 = ik1_func(xsel_carn, xfull = xfull_carn, inds = inds, mt_flag = True, carn_flag = True) 
+
+# Plot the results
+plt.figure()
+plt.plot(steps_ik1, Odening_MT_ik1['ik1'], color = 'r', label = 'SQT1')
+plt.plot(steps_ik1, Odening_WT_ik1['ik1'], color = 'k', label = 'WT', ls = 'dotted', ms = 4)
+plt.plot(steps_ik1, Odening_WT_carn_ik1['ik1'], color = 'b', label = 'WT + Carn')
+plt.plot(steps_ik1, Odening_MT_carn_ik1['ik1'], color = 'g', label = 'SQT1 + Carn')
+plt.legend()
+plt.ylabel('Current density (pA/pF)')
+plt.xlabel('Voltage steps (mV)')
+plt.tight_layout()
+
+# Export to Graphpad.
+export_dict_to_csv(Odening_WT_ik1, base_filename = 'Odening_WT_ik1', steps = steps_ik1)
+export_dict_to_csv(Odening_MT_ik1, base_filename = 'Odening_MT_ik1', steps = steps_ik1)
+export_dict_to_csv(Odening_WT_carn_ik1, base_filename = 'Odening_WT_carn_ik1', steps = steps_ik1)
+export_dict_to_csv(Odening_MT_carn_ik1, base_filename = 'Odening_MT_carn_ik1', steps = steps_ik1)
 #%% Action potential effects
 
 # Load the model.
@@ -678,7 +841,7 @@ def action_pot(m, p, x, bcl, prepace, mt_flag = True, carn_flag = False, apex = 
     
     return dict(data = data, apd = apd, duration = duration, ikr = ikr)
 
-# Generate action potentials for each cell type at the base
+# Generate action potentials for each cell type at the middle (No AB scalar).
 wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
 Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
 sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
@@ -839,6 +1002,15 @@ axs[2, 1].set_xlim([0, 500])
 
 # Tidy the layout.
 plt.tight_layout()
+
+# Calculate the relative difference in APD90 for the endocardial APs.
+apd90_dif = np.round(Lcarn_sqt_ap_endo['duration'] / sqt_ap_endo['duration'], 2)
+norm_dif = (Lcarn_sqt_ap_endo['duration'] - sqt_ap_endo['duration'])/sqt_ap_endo['duration']
+
+wt_ap_endo = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
+Lcarn_wt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = True, apex = 1)
+sqt_ap_endo = action_pot(m = m1, p = pace, x = x_default_sqt, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = False, apex = 1)
+Lcarn_sqt_ap_endo = action_pot(m = m1, p = pace, x = Lcarn_sqt1, bcl = bcl, prepace = 1000, mt_flag = True, carn_flag = True, apex = 1)
 
 #%% Optimize the IKb to get a 20% difference 
 wt_ap_endo_mid = action_pot(m = m1, p = pace, x = x_wt, bcl = bcl, prepace = 1000, mt_flag = False, carn_flag = False, apex = 1)
@@ -1072,6 +1244,11 @@ axs[1].set_xlim([0, 500])
 
 # Tidy up the plots.
 plt.tight_layout()
+
+# Calculate the relative difference in APD90
+sqt1_dif = np.round(RL_Lcarn_sqt1['apd']/RL_sqt1['apd'],2)
+
+norm_dif_rabbit = (RL_Lcarn_sqt1['apd'] - RL_sqt1['apd'])/RL_sqt1['apd']
 
 # Export the rabbit data to .csv by first creating a dataframe
 df_RL_wt = pd.DataFrame({'Time': RL_wt['data']['Environment.time'],
