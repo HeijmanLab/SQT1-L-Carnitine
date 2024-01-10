@@ -1030,6 +1030,10 @@ plt.legend()
 plt.xlabel('Time [ms]')
 plt.ylabel('Membrane potential (mV)')
 plt.title('Endocardial tissue')
+
+# Difference apex to base
+diff_AB =  wt_ap_endo_base['duration'] - wt_ap_endo_apex['duration'] 
+
 #%% Relative changes in APD for each cell type
 # Obtain the relative changes in apd for each of the celltypes. 
 rel_apd_endo = relative_apd(wt = wt_ap_endo, mt = sqt_ap_endo, 
